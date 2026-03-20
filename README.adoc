@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Betlangiser
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:toc: left
+:icons: font
+
+== What Is This?
+
+Betlangiser adds **ternary probabilistic uncertainty modelling** to deterministic
+code — expressing "maybe", "probably", and "unlikely" as first-class values.
+
+Betlang is a probabilistic programming language built on Racket where the
+core primitive is the ternary bet. Betlangiser wraps deterministic code
+in probabilistic semantics.
+
+== How It Works
+
+Annotate uncertain values in `betlangiser.toml`. Betlangiser:
+
+1. Identifies deterministic decisions that should be probabilistic
+2. Generates Betlang probabilistic wrappers with ternary bet semantics
+3. Provides 14 number systems for different precision needs
+4. Runs Monte Carlo simulation or analytical inference
+5. Returns probability distributions, not point estimates
+
+== Key Value
+
+* **Uncertainty as a first-class citizen** — not bolted on, built in
+* **Ternary bets** — richer than binary (true/false/uncertain)
+* **14 number systems** — from exact rationals to fuzzy intervals
+* **Decision under uncertainty** — Bayesian reasoning made accessible
+
+== Architecture
+
+Follows the hyperpolymath -iser pattern:
+manifest -> Idris2 ABI proof -> Zig FFI bridge -> target language codegen.
+Part of the https://github.com/hyperpolymath/iseriser[-iser family].
+
+== Status
+
+**Pre-alpha.** Architecture defined, scaffolding in place, codegen pending.
+
+== License
+
+SPDX-License-Identifier: PMPL-1.0-or-later
