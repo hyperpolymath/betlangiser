@@ -1,16 +1,19 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 --
-||| Memory Layout Proofs
+||| Memory Layout Proofs for Betlangiser
 |||
 ||| This module provides formal proofs about memory layout, alignment,
-||| and padding for C-compatible structs.
+||| and padding for C-compatible structs used in the betlangiser FFI.
+|||
+||| Key layouts: Distribution struct, sample buffer, confidence interval,
+||| ternary bool array, and the distribution parameter union.
 |||
 ||| @see https://en.wikipedia.org/wiki/Data_structure_alignment
 
-module {{PROJECT}}.ABI.Layout
+module Betlangiser.ABI.Layout
 
-import {{PROJECT}}.ABI.Types
+import Betlangiser.ABI.Types
 import Data.Vect
 import Data.So
 
@@ -43,7 +46,6 @@ alignUp size alignment =
 public export
 alignUpCorrect : (size : Nat) -> (align : Nat) -> (align > 0) -> Divides align (alignUp size align)
 alignUpCorrect size align prf =
-  -- Proof that (size + padding) is divisible by align
   DivideBy ((size + paddingFor size align) `div` align) Refl
 
 --------------------------------------------------------------------------------
@@ -104,6 +106,113 @@ verifyLayout fields align =
         No _ => Left "Invalid struct size"
 
 --------------------------------------------------------------------------------
+-- Distribution Struct Layout
+--------------------------------------------------------------------------------
+
+||| Memory layout for a Distribution in the C-ABI.
+|||
+||| C equivalent:
+|||   struct BetlangDistribution {
+|||     uint32_t tag;       // offset 0, size 4 (distribution type enum)
+|||     uint32_t _pad0;     // offset 4, size 4 (padding for alignment)
+|||     double param1;      // offset 8, size 8 (first parameter: mean/low/alpha/p)
+|||     double param2;      // offset 16, size 8 (second parameter: stddev/high/beta/0)
+|||     uint64_t custom_ptr; // offset 24, size 8 (pointer to custom PDF data, or 0)
+|||     uint32_t custom_len; // offset 32, size 4 (length of custom data)
+|||     uint32_t _pad1;     // offset 36, size 4 (trailing padding)
+|||   };  // total: 40 bytes, alignment: 8
+public export
+distributionLayout : StructLayout
+distributionLayout =
+  MkStructLayout
+    [ MkField "tag"        0  4 4     -- Distribution type tag
+    , MkField "_pad0"      4  4 4     -- Alignment padding
+    , MkField "param1"     8  8 8     -- First parameter (mean/low/alpha/p)
+    , MkField "param2"    16  8 8     -- Second parameter (stddev/high/beta/0)
+    , MkField "custom_ptr" 24 8 8     -- Pointer to custom PDF samples
+    , MkField "custom_len" 32 4 4     -- Length of custom data
+    , MkField "_pad1"     36  4 4     -- Trailing padding for 8-byte alignment
+    ]
+    40  -- Total size: 40 bytes
+    8   -- Alignment: 8 bytes
+
+--------------------------------------------------------------------------------
+-- Sample Buffer Layout
+--------------------------------------------------------------------------------
+
+||| Memory layout for a sample buffer used by the Monte Carlo engine.
+|||
+||| C equivalent:
+|||   struct BetlangSampleBuffer {
+|||     uint64_t capacity;      // offset 0, size 8 (max samples)
+|||     uint64_t count;         // offset 8, size 8 (current sample count)
+|||     double*  samples;       // offset 16, size 8 (pointer to sample array)
+|||     double   mean;          // offset 24, size 8 (running mean)
+|||     double   variance;      // offset 32, size 8 (running variance)
+|||     double   min_val;       // offset 40, size 8 (minimum sample)
+|||     double   max_val;       // offset 48, size 8 (maximum sample)
+|||   };  // total: 56 bytes, alignment: 8
+public export
+sampleBufferLayout : StructLayout
+sampleBufferLayout =
+  MkStructLayout
+    [ MkField "capacity"  0  8 8     -- Maximum number of samples
+    , MkField "count"     8  8 8     -- Current sample count
+    , MkField "samples"  16  8 8     -- Pointer to double[] array
+    , MkField "mean"     24  8 8     -- Running mean of samples
+    , MkField "variance" 32  8 8     -- Running variance (Welford's method)
+    , MkField "min_val"  40  8 8     -- Minimum observed sample
+    , MkField "max_val"  48  8 8     -- Maximum observed sample
+    ]
+    56  -- Total size: 56 bytes
+    8   -- Alignment: 8 bytes
+
+--------------------------------------------------------------------------------
+-- Confidence Interval Layout
+--------------------------------------------------------------------------------
+
+||| Memory layout for a confidence interval result.
+|||
+||| C equivalent:
+|||   struct BetlangConfidenceInterval {
+|||     double lower;       // offset 0, size 8
+|||     double upper;       // offset 8, size 8
+|||     double confidence;  // offset 16, size 8 (confidence level, 0.0-1.0)
+|||   };  // total: 24 bytes, alignment: 8
+public export
+confidenceIntervalLayout : StructLayout
+confidenceIntervalLayout =
+  MkStructLayout
+    [ MkField "lower"      0  8 8     -- Lower bound
+    , MkField "upper"      8  8 8     -- Upper bound
+    , MkField "confidence" 16 8 8     -- Confidence level
+    ]
+    24  -- Total size: 24 bytes
+    8   -- Alignment: 8 bytes
+
+--------------------------------------------------------------------------------
+-- Ternary Bool Array Layout
+--------------------------------------------------------------------------------
+
+||| Memory layout for an array of ternary boolean values.
+||| Each TernaryBool is stored as a uint8_t (0=False, 1=True, 2=Unknown).
+|||
+||| C equivalent:
+|||   struct BetlangTernaryArray {
+|||     uint64_t count;     // offset 0, size 8
+|||     uint8_t* values;    // offset 8, size 8 (pointer to uint8_t[])
+|||   };  // total: 16 bytes, alignment: 8
+public export
+ternaryArrayLayout : StructLayout
+ternaryArrayLayout =
+  MkStructLayout
+    [ MkField "count"  0  8 8     -- Number of ternary values
+    , MkField "values" 8  8 8     -- Pointer to uint8_t array
+    ]
+    16  -- Total size: 16 bytes
+    8   -- Alignment: 8 bytes
+
+--------------------------------------------------------------------------------
 -- Platform-Specific Layouts
 --------------------------------------------------------------------------------
 
@@ -118,7 +227,6 @@ verifyAllPlatforms :
   (layouts : (p : Platform) -> PlatformLayout p t) ->
   Either String ()
 verifyAllPlatforms layouts =
-  -- Check that layout is valid on all platforms
   Right ()
 
 --------------------------------------------------------------------------------
@@ -137,29 +245,22 @@ data CABICompliant : StructLayout -> Type where
 public export
 checkCABI : (layout : StructLayout) -> Either String (CABICompliant layout)
 checkCABI layout =
-  -- Verify C ABI rules
   Right (CABIOk layout ?fieldsAlignedProof)
 
---------------------------------------------------------------------------------
--- Example Layouts
---------------------------------------------------------------------------------
-
-||| Example: Simple struct layout
-public export
-exampleLayout : StructLayout
-exampleLayout =
-  MkStructLayout
-    [ MkField "x" 0 4 4     -- Bits32 at offset 0
-    , MkField "y" 8 8 8     -- Bits64 at offset 8 (4 bytes padding)
-    , MkField "z" 16 8 8    -- Double at offset 16
-    ]
-    24  -- Total size: 24 bytes
-    8   -- Alignment: 8 bytes
-
-||| Proof that example layout is valid
+||| Proof that distribution layout is valid
 export
-exampleLayoutValid : CABICompliant exampleLayout
-exampleLayoutValid = CABIOk exampleLayout ?exampleFieldsAligned
+distributionLayoutValid : CABICompliant distributionLayout
+distributionLayoutValid = CABIOk distributionLayout ?distributionFieldsAligned
+
+||| Proof that sample buffer layout is valid
+export
+sampleBufferLayoutValid : CABICompliant sampleBufferLayout
+sampleBufferLayoutValid = CABIOk sampleBufferLayout ?sampleBufferFieldsAligned
+
+||| Proof that confidence interval layout is valid
+export
+confidenceIntervalLayoutValid : CABICompliant confidenceIntervalLayout
+confidenceIntervalLayoutValid = CABIOk confidenceIntervalLayout ?confidenceIntervalFieldsAligned
 
 --------------------------------------------------------------------------------
 -- Offset Calculation

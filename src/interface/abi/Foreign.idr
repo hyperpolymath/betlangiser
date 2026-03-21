@@ -1,18 +1,23 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 --
-||| Foreign Function Interface Declarations
+||| Foreign Function Interface Declarations for Betlangiser
 |||
 ||| This module declares all C-compatible functions that will be
-||| implemented in the Zig FFI layer.
+||| implemented in the Zig FFI layer. Functions cover:
+|||   - Distribution creation and destruction
+|||   - Sampling from distributions
+|||   - Distribution combination (sum, product, mixture)
+|||   - Ternary logic evaluation
+|||   - Confidence interval computation
 |||
 ||| All functions are declared here with type signatures and safety proofs.
-||| Implementations live in ffi/zig/
+||| Implementations live in src/interface/ffi/
 
-module {{PROJECT}}.ABI.Foreign
+module Betlangiser.ABI.Foreign
 
-import {{PROJECT}}.ABI.Types
-import {{PROJECT}}.ABI.Layout
+import Betlangiser.ABI.Types
+import Betlangiser.ABI.Layout
 
 %default total
 
@@ -20,22 +25,22 @@ import {{PROJECT}}.ABI.Layout
 -- Library Lifecycle
 --------------------------------------------------------------------------------
 
-||| Initialize the library
-||| Returns a handle to the library instance, or Nothing on failure
+||| Initialize the betlangiser engine.
+||| Returns a handle to the engine instance, or Nothing on failure.
 export
-%foreign "C:{{project}}_init, lib{{project}}"
+%foreign "C:betlangiser_init, libbetlangiser"
 prim__init : PrimIO Bits64
 
-||| Safe wrapper for library initialization
+||| Safe wrapper for engine initialization
 export
 init : IO (Maybe Handle)
 init = do
   ptr <- primIO prim__init
   pure (createHandle ptr)
 
-||| Clean up library resources
+||| Clean up engine resources and free all distributions
 export
-%foreign "C:{{project}}_free, lib{{project}}"
+%foreign "C:betlangiser_free, libbetlangiser"
 prim__free : Bits64 -> PrimIO ()
 
 ||| Safe wrapper for cleanup
@@ -44,22 +49,252 @@ free : Handle -> IO ()
 free h = primIO (prim__free (handlePtr h))
 
 --------------------------------------------------------------------------------
--- Core Operations
+-- Distribution Creation
 --------------------------------------------------------------------------------
 
-||| Example operation: process data
+||| Create a Normal distribution.
+||| Parameters: mean (double), stddev (double, must be > 0)
 export
-%foreign "C:{{project}}_process, lib{{project}}"
-prim__process : Bits64 -> Bits32 -> PrimIO Bits32
+%foreign "C:betlangiser_dist_normal, libbetlangiser"
+prim__distNormal : Bits64 -> Double -> Double -> PrimIO Bits64
 
-||| Safe wrapper with error handling
+||| Safe wrapper: create a Normal distribution
 export
-process : Handle -> Bits32 -> IO (Either Result Bits32)
-process h input = do
-  result <- primIO (prim__process (handlePtr h) input)
+distNormal : Handle -> (mean : Double) -> (stddev : Double) ->
+             {auto 0 valid : So (stddev > 0.0)} ->
+             IO (Maybe DistributionHandle)
+distNormal h mean stddev = do
+  ptr <- primIO (prim__distNormal (handlePtr h) mean stddev)
+  pure (createDistHandle ptr)
+
+||| Create a Uniform distribution.
+||| Parameters: low (double), high (double, must be > low)
+export
+%foreign "C:betlangiser_dist_uniform, libbetlangiser"
+prim__distUniform : Bits64 -> Double -> Double -> PrimIO Bits64
+
+||| Safe wrapper: create a Uniform distribution
+export
+distUniform : Handle -> (low : Double) -> (high : Double) ->
+              {auto 0 valid : So (low < high)} ->
+              IO (Maybe DistributionHandle)
+distUniform h low high = do
+  ptr <- primIO (prim__distUniform (handlePtr h) low high)
+  pure (createDistHandle ptr)
+
+||| Create a Beta distribution.
+||| Parameters: alpha (double, > 0), beta (double, > 0)
+export
+%foreign "C:betlangiser_dist_beta, libbetlangiser"
+prim__distBeta : Bits64 -> Double -> Double -> PrimIO Bits64
+
+||| Safe wrapper: create a Beta distribution
+export
+distBeta : Handle -> (alpha : Double) -> (beta : Double) ->
+           {auto 0 validA : So (alpha > 0.0)} ->
+           {auto 0 validB : So (beta > 0.0)} ->
+           IO (Maybe DistributionHandle)
+distBeta h alpha beta = do
+  ptr <- primIO (prim__distBeta (handlePtr h) alpha beta)
+  pure (createDistHandle ptr)
+
+||| Create a Bernoulli distribution.
+||| Parameter: p (probability of success, in [0,1])
+export
+%foreign "C:betlangiser_dist_bernoulli, libbetlangiser"
+prim__distBernoulli : Bits64 -> Double -> PrimIO Bits64
+
+||| Safe wrapper: create a Bernoulli distribution
+export
+distBernoulli : Handle -> ProbabilityValue -> IO (Maybe DistributionHandle)
+distBernoulli h p = do
+  ptr <- primIO (prim__distBernoulli (handlePtr h) (probValue p))
+  pure (createDistHandle ptr)
+
+||| Free a distribution handle
+export
+%foreign "C:betlangiser_dist_free, libbetlangiser"
+prim__distFree : Bits64 -> Bits64 -> PrimIO ()
+
+||| Safe wrapper: free a distribution
+export
+distFree : Handle -> DistributionHandle -> IO ()
+distFree h d = primIO (prim__distFree (handlePtr h) (distHandlePtr d))
+
+--------------------------------------------------------------------------------
+-- Sampling
+--------------------------------------------------------------------------------
+
+||| Draw a single sample from a distribution
+export
+%foreign "C:betlangiser_sample_one, libbetlangiser"
+prim__sampleOne : Bits64 -> Bits64 -> PrimIO Double
+
+||| Safe wrapper: sample a single value
+export
+sampleOne : Handle -> DistributionHandle -> IO Double
+sampleOne h d = primIO (prim__sampleOne (handlePtr h) (distHandlePtr d))
+
+||| Draw multiple samples into a buffer.
+||| Parameters: distribution handle, output buffer pointer, count.
+||| Returns result code.
+export
+%foreign "C:betlangiser_sample_many, libbetlangiser"
+prim__sampleMany : Bits64 -> Bits64 -> Bits64 -> Bits64 -> PrimIO Bits32
+
+||| Safe wrapper: sample multiple values
+export
+sampleMany : Handle -> DistributionHandle -> (bufferPtr : Bits64) -> (count : Bits64) ->
+             IO (Either Result ())
+sampleMany h d buf count = do
+  result <- primIO (prim__sampleMany (handlePtr h) (distHandlePtr d) buf count)
   pure $ case result of
-    0 => Left Error
-    n => Right n
+    0 => Right ()
+    1 => Left Error
+    2 => Left InvalidParam
+    3 => Left OutOfMemory
+    4 => Left NullPointer
+    5 => Left InvalidDistribution
+    6 => Left SamplingFailed
+    _ => Left Error
+
+--------------------------------------------------------------------------------
+-- Distribution Combination
+--------------------------------------------------------------------------------
+
+||| Combine two distributions by addition (convolution).
+||| Returns a new distribution handle representing the sum.
+export
+%foreign "C:betlangiser_dist_add, libbetlangiser"
+prim__distAdd : Bits64 -> Bits64 -> Bits64 -> PrimIO Bits64
+
+||| Safe wrapper: add two distributions
+export
+distAdd : Handle -> DistributionHandle -> DistributionHandle ->
+          IO (Maybe DistributionHandle)
+distAdd h d1 d2 = do
+  ptr <- primIO (prim__distAdd (handlePtr h) (distHandlePtr d1) (distHandlePtr d2))
+  pure (createDistHandle ptr)
+
+||| Combine two distributions by multiplication (product).
+export
+%foreign "C:betlangiser_dist_multiply, libbetlangiser"
+prim__distMultiply : Bits64 -> Bits64 -> Bits64 -> PrimIO Bits64
+
+||| Safe wrapper: multiply two distributions
+export
+distMultiply : Handle -> DistributionHandle -> DistributionHandle ->
+               IO (Maybe DistributionHandle)
+distMultiply h d1 d2 = do
+  ptr <- primIO (prim__distMultiply (handlePtr h) (distHandlePtr d1) (distHandlePtr d2))
+  pure (createDistHandle ptr)
+
+||| Create a mixture distribution from two distributions with weights.
+||| weight is the probability of choosing the first distribution.
+export
+%foreign "C:betlangiser_dist_mixture, libbetlangiser"
+prim__distMixture : Bits64 -> Bits64 -> Bits64 -> Double -> PrimIO Bits64
+
+||| Safe wrapper: mixture of two distributions
+export
+distMixture : Handle -> DistributionHandle -> DistributionHandle ->
+              ProbabilityValue -> IO (Maybe DistributionHandle)
+distMixture h d1 d2 weight = do
+  ptr <- primIO (prim__distMixture (handlePtr h) (distHandlePtr d1) (distHandlePtr d2) (probValue weight))
+  pure (createDistHandle ptr)
+
+--------------------------------------------------------------------------------
+-- Ternary Logic Evaluation
+--------------------------------------------------------------------------------
+
+||| Compare a distribution sample to a threshold, returning TernaryBool.
+||| If confidence is below threshold, returns Unknown.
+export
+%foreign "C:betlangiser_ternary_compare, libbetlangiser"
+prim__ternaryCompare : Bits64 -> Bits64 -> Double -> Double -> PrimIO Bits32
+
+||| Safe wrapper: ternary comparison
+||| Returns TTrue if P(dist > threshold) >= confidence,
+|||         TFalse if P(dist <= threshold) >= confidence,
+|||         TUnknown otherwise.
+export
+ternaryCompare : Handle -> DistributionHandle -> (threshold : Double) ->
+                 (confidence : Double) -> IO TernaryBool
+ternaryCompare h d threshold conf = do
+  result <- primIO (prim__ternaryCompare (handlePtr h) (distHandlePtr d) threshold conf)
+  pure $ case intToTernary result of
+    Just t => t
+    Nothing => TUnknown  -- Defensive fallback
+
+||| Evaluate ternary AND on two distribution comparisons
+export
+%foreign "C:betlangiser_ternary_and, libbetlangiser"
+prim__ternaryAndFFI : Bits32 -> Bits32 -> Bits32
+
+||| Evaluate ternary OR on two distribution comparisons
+export
+%foreign "C:betlangiser_ternary_or, libbetlangiser"
+prim__ternaryOrFFI : Bits32 -> Bits32 -> Bits32
+
+||| Evaluate ternary NOT on a distribution comparison
+export
+%foreign "C:betlangiser_ternary_not, libbetlangiser"
+prim__ternaryNotFFI : Bits32 -> Bits32
+
+--------------------------------------------------------------------------------
+-- Confidence Interval Computation
+--------------------------------------------------------------------------------
+
+||| Compute a confidence interval for a distribution.
+||| Parameters: distribution handle, confidence level (e.g. 0.95).
+||| Writes lower, upper, confidence into output struct.
+export
+%foreign "C:betlangiser_confidence_interval, libbetlangiser"
+prim__confidenceInterval : Bits64 -> Bits64 -> Double -> Bits64 -> PrimIO Bits32
+
+||| Safe wrapper: compute confidence interval
+export
+confidenceInterval : Handle -> DistributionHandle -> (confidence : Double) ->
+                     (outputPtr : Bits64) -> IO (Either Result ())
+confidenceInterval h d conf outPtr = do
+  result <- primIO (prim__confidenceInterval (handlePtr h) (distHandlePtr d) conf outPtr)
+  pure $ case result of
+    0 => Right ()
+    _ => Left Error
+
+--------------------------------------------------------------------------------
+-- Distribution Properties
+--------------------------------------------------------------------------------
+
+||| Get the mean of a distribution
+export
+%foreign "C:betlangiser_dist_mean, libbetlangiser"
+prim__distMean : Bits64 -> Bits64 -> PrimIO Double
+
+||| Safe wrapper: distribution mean
+export
+distMean : Handle -> DistributionHandle -> IO Double
+distMean h d = primIO (prim__distMean (handlePtr h) (distHandlePtr d))
+
+||| Get the variance of a distribution
+export
+%foreign "C:betlangiser_dist_variance, libbetlangiser"
+prim__distVariance : Bits64 -> Bits64 -> PrimIO Double
+
+||| Safe wrapper: distribution variance
+export
+distVariance : Handle -> DistributionHandle -> IO Double
+distVariance h d = primIO (prim__distVariance (handlePtr h) (distHandlePtr d))
+
+||| Get the distribution tag (type identifier)
+export
+%foreign "C:betlangiser_dist_tag, libbetlangiser"
+prim__distTag : Bits64 -> Bits64 -> PrimIO Bits32
+
+||| Safe wrapper: get distribution type
+export
+distTag : Handle -> DistributionHandle -> IO Bits32
+distTag h d = primIO (prim__distTag (handlePtr h) (distHandlePtr d))
 
 --------------------------------------------------------------------------------
 -- String Operations
@@ -72,12 +307,12 @@ prim__getString : Bits64 -> String
 
 ||| Free C string
 export
-%foreign "C:{{project}}_free_string, lib{{project}}"
+%foreign "C:betlangiser_free_string, libbetlangiser"
 prim__freeString : Bits64 -> PrimIO ()
 
 ||| Get string result from library
 export
-%foreign "C:{{project}}_get_string, lib{{project}}"
+%foreign "C:betlangiser_get_string, libbetlangiser"
 prim__getResult : Bits64 -> PrimIO Bits64
 
 ||| Safe string getter
@@ -93,39 +328,12 @@ getString h = do
       pure (Just str)
 
 --------------------------------------------------------------------------------
--- Array/Buffer Operations
---------------------------------------------------------------------------------
-
-||| Process array data
-export
-%foreign "C:{{project}}_process_array, lib{{project}}"
-prim__processArray : Bits64 -> Bits64 -> Bits32 -> PrimIO Bits32
-
-||| Safe array processor
-export
-processArray : Handle -> (buffer : Bits64) -> (len : Bits32) -> IO (Either Result ())
-processArray h buf len = do
-  result <- primIO (prim__processArray (handlePtr h) buf len)
-  pure $ case resultFromInt result of
-    Just Ok => Right ()
-    Just err => Left err
-    Nothing => Left Error
-  where
-    resultFromInt : Bits32 -> Maybe Result
-    resultFromInt 0 = Just Ok
-    resultFromInt 1 = Just Error
-    resultFromInt 2 = Just InvalidParam
-    resultFromInt 3 = Just OutOfMemory
-    resultFromInt 4 = Just NullPointer
-    resultFromInt _ = Nothing
-
---------------------------------------------------------------------------------
 -- Error Handling
 --------------------------------------------------------------------------------
 
 ||| Get last error message
 export
-%foreign "C:{{project}}_last_error, lib{{project}}"
+%foreign "C:betlangiser_last_error, libbetlangiser"
 prim__lastError : PrimIO Bits64
 
 ||| Retrieve last error as string
@@ -145,6 +353,8 @@ errorDescription Error = "Generic error"
 errorDescription InvalidParam = "Invalid parameter"
 errorDescription OutOfMemory = "Out of memory"
 errorDescription NullPointer = "Null pointer"
+errorDescription InvalidDistribution = "Invalid distribution parameters"
+errorDescription SamplingFailed = "Sampling failed"
 
 --------------------------------------------------------------------------------
 -- Version Information
@@ -152,7 +362,7 @@ errorDescription NullPointer = "Null pointer"
 
 ||| Get library version
 export
-%foreign "C:{{project}}_version, lib{{project}}"
+%foreign "C:betlangiser_version, libbetlangiser"
 prim__version : PrimIO Bits64
 
 ||| Get version as string
@@ -164,7 +374,7 @@ version = do
 
 ||| Get library build info
 export
-%foreign "C:{{project}}_build_info, lib{{project}}"
+%foreign "C:betlangiser_build_info, libbetlangiser"
 prim__buildInfo : PrimIO Bits64
 
 ||| Get build information
@@ -175,31 +385,12 @@ buildInfo = do
   pure (prim__getString ptr)
 
 --------------------------------------------------------------------------------
--- Callback Support
---------------------------------------------------------------------------------
-
-||| Callback function type (C ABI)
-public export
-Callback : Type
-Callback = Bits64 -> Bits32 -> Bits32
-
-||| Register a callback
-export
-%foreign "C:{{project}}_register_callback, lib{{project}}"
-prim__registerCallback : Bits64 -> AnyPtr -> PrimIO Bits32
-
--- TODO: Implement safe callback registration.
--- The callback must be wrapped via a proper FFI callback mechanism.
--- Do NOT use cast — it is banned per project safety standards.
--- See: https://idris2.readthedocs.io/en/latest/ffi/ffi.html#callbacks
-
---------------------------------------------------------------------------------
 -- Utility Functions
 --------------------------------------------------------------------------------
 
-||| Check if library is initialized
+||| Check if engine is initialized
 export
-%foreign "C:{{project}}_is_initialized, lib{{project}}"
+%foreign "C:betlangiser_is_initialized, libbetlangiser"
 prim__isInitialized : Bits64 -> PrimIO Bits32
 
 ||| Check initialization status

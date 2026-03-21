@@ -1,79 +1,280 @@
-// {{PROJECT}} Integration Tests
+// Betlangiser Integration Tests
 // SPDX-License-Identifier: PMPL-1.0-or-later
 //
-// These tests verify that the Zig FFI correctly implements the Idris2 ABI
+// These tests verify that the Zig FFI correctly implements the Idris2 ABI.
+// Coverage: lifecycle, distribution creation, sampling, ternary logic,
+// error handling, version, and memory safety.
 
 const std = @import("std");
 const testing = std.testing;
 
-// Import FFI functions
-extern fn {{project}}_init() ?*opaque {};
-extern fn {{project}}_free(?*opaque {}) void;
-extern fn {{project}}_process(?*opaque {}, u32) c_int;
-extern fn {{project}}_get_string(?*opaque {}) ?[*:0]const u8;
-extern fn {{project}}_free_string(?[*:0]const u8) void;
-extern fn {{project}}_last_error() ?[*:0]const u8;
-extern fn {{project}}_version() [*:0]const u8;
-extern fn {{project}}_is_initialized(?*opaque {}) u32;
+// Import FFI functions — distribution engine
+extern fn betlangiser_init() ?*anyopaque;
+extern fn betlangiser_free(?*anyopaque) void;
+extern fn betlangiser_is_initialized(?*anyopaque) u32;
+
+// Distribution creation
+extern fn betlangiser_dist_normal(?*anyopaque, f64, f64) u64;
+extern fn betlangiser_dist_uniform(?*anyopaque, f64, f64) u64;
+extern fn betlangiser_dist_beta(?*anyopaque, f64, f64) u64;
+extern fn betlangiser_dist_bernoulli(?*anyopaque, f64) u64;
+extern fn betlangiser_dist_free(?*anyopaque, u64) void;
+
+// Sampling
+extern fn betlangiser_sample_one(?*anyopaque, u64) f64;
+extern fn betlangiser_sample_many(?*anyopaque, u64, u64, u64) c_int;
+
+// Distribution combination
+extern fn betlangiser_dist_add(?*anyopaque, u64, u64) u64;
+
+// Distribution properties
+extern fn betlangiser_dist_mean(?*anyopaque, u64) f64;
+extern fn betlangiser_dist_variance(?*anyopaque, u64) f64;
+extern fn betlangiser_dist_tag(?*anyopaque, u64) u32;
+
+// Ternary logic
+extern fn betlangiser_ternary_compare(?*anyopaque, u64, f64, f64) u32;
+extern fn betlangiser_ternary_and(u32, u32) u32;
+extern fn betlangiser_ternary_or(u32, u32) u32;
+extern fn betlangiser_ternary_not(u32) u32;
+
+// String and error operations
+extern fn betlangiser_get_string(?*anyopaque) ?[*:0]const u8;
+extern fn betlangiser_free_string(?[*:0]const u8) void;
+extern fn betlangiser_last_error() ?[*:0]const u8;
+extern fn betlangiser_version() [*:0]const u8;
 
 //==============================================================================
 // Lifecycle Tests
 //==============================================================================
 
-test "create and destroy handle" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
+test "create and destroy engine" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
 
     try testing.expect(handle != null);
 }
 
-test "handle is initialized" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
+test "engine is initialized" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
 
-    const initialized = {{project}}_is_initialized(handle);
+    const initialized = betlangiser_is_initialized(handle);
     try testing.expectEqual(@as(u32, 1), initialized);
 }
 
 test "null handle is not initialized" {
-    const initialized = {{project}}_is_initialized(null);
+    const initialized = betlangiser_is_initialized(null);
     try testing.expectEqual(@as(u32, 0), initialized);
 }
 
 //==============================================================================
-// Operation Tests
+// Distribution Creation Tests
 //==============================================================================
 
-test "process with valid handle" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
+test "create normal distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
 
-    const result = {{project}}_process(handle, 42);
-    try testing.expectEqual(@as(c_int, 0), result); // 0 = ok
+    const dist = betlangiser_dist_normal(handle, 0.0, 1.0);
+    try testing.expect(dist != 0);
+
+    try testing.expectEqual(@as(u32, 0), betlangiser_dist_tag(handle, dist)); // normal = 0
 }
 
-test "process with null handle returns error" {
-    const result = {{project}}_process(null, 42);
-    try testing.expectEqual(@as(c_int, 4), result); // 4 = null_pointer
+test "create uniform distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_uniform(handle, 0.0, 1.0);
+    try testing.expect(dist != 0);
+
+    try testing.expectEqual(@as(u32, 1), betlangiser_dist_tag(handle, dist)); // uniform = 1
+}
+
+test "create beta distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_beta(handle, 2.0, 5.0);
+    try testing.expect(dist != 0);
+
+    try testing.expectEqual(@as(u32, 2), betlangiser_dist_tag(handle, dist)); // beta = 2
+}
+
+test "create bernoulli distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_bernoulli(handle, 0.5);
+    try testing.expect(dist != 0);
+
+    try testing.expectEqual(@as(u32, 3), betlangiser_dist_tag(handle, dist)); // bernoulli = 3
+}
+
+test "reject invalid normal distribution (negative stddev)" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_normal(handle, 0.0, -1.0);
+    try testing.expectEqual(@as(u64, 0), dist);
+}
+
+test "reject invalid uniform distribution (low >= high)" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_uniform(handle, 10.0, 5.0);
+    try testing.expectEqual(@as(u64, 0), dist);
+}
+
+test "reject invalid bernoulli distribution (p > 1)" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_bernoulli(handle, 1.5);
+    try testing.expectEqual(@as(u64, 0), dist);
 }
 
 //==============================================================================
-// String Tests
+// Distribution Properties Tests
 //==============================================================================
 
-test "get string result" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
+test "normal distribution mean" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
 
-    const str = {{project}}_get_string(handle);
-    defer if (str) |s| {{project}}_free_string(s);
+    const dist = betlangiser_dist_normal(handle, 42.0, 5.0);
+    try testing.expect(dist != 0);
 
-    try testing.expect(str != null);
+    const mean = betlangiser_dist_mean(handle, dist);
+    try testing.expectApproxEqAbs(@as(f64, 42.0), mean, 0.001);
 }
 
-test "get string with null handle" {
-    const str = {{project}}_get_string(null);
-    try testing.expect(str == null);
+test "uniform distribution mean" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_uniform(handle, 10.0, 20.0);
+    try testing.expect(dist != 0);
+
+    const mean = betlangiser_dist_mean(handle, dist);
+    try testing.expectApproxEqAbs(@as(f64, 15.0), mean, 0.001);
+}
+
+test "bernoulli distribution variance" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_bernoulli(handle, 0.3);
+    try testing.expect(dist != 0);
+
+    const variance = betlangiser_dist_variance(handle, dist);
+    try testing.expectApproxEqAbs(@as(f64, 0.21), variance, 0.001); // 0.3 * 0.7
+}
+
+//==============================================================================
+// Distribution Combination Tests
+//==============================================================================
+
+test "add two normal distributions" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const d1 = betlangiser_dist_normal(handle, 10.0, 3.0);
+    const d2 = betlangiser_dist_normal(handle, 5.0, 4.0);
+    try testing.expect(d1 != 0);
+    try testing.expect(d2 != 0);
+
+    const sum = betlangiser_dist_add(handle, d1, d2);
+    try testing.expect(sum != 0);
+
+    // Sum of normals: mean = 10+5 = 15
+    const mean = betlangiser_dist_mean(handle, sum);
+    try testing.expectApproxEqAbs(@as(f64, 15.0), mean, 0.001);
+
+    // Variance: sqrt(9 + 16) = 5.0
+    const variance = betlangiser_dist_variance(handle, sum);
+    try testing.expectApproxEqAbs(@as(f64, 25.0), variance, 0.001); // stddev^2 = 25
+}
+
+//==============================================================================
+// Ternary Logic Tests
+//==============================================================================
+
+test "ternary NOT truth table" {
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_not(0)); // NOT False = True
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_not(1)); // NOT True = False
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_not(2)); // NOT Unknown = Unknown
+}
+
+test "ternary AND truth table (Kleene)" {
+    // False dominates
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_and(0, 0));
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_and(0, 1));
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_and(0, 2));
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_and(1, 0));
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_and(2, 0));
+
+    // True AND x = x
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_and(1, 1));
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_and(1, 2));
+
+    // Unknown cases
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_and(2, 1));
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_and(2, 2));
+}
+
+test "ternary OR truth table (Kleene)" {
+    // True dominates
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_or(1, 0));
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_or(1, 1));
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_or(1, 2));
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_or(0, 1));
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_or(2, 1));
+
+    // False OR x = x
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_or(0, 0));
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_or(0, 2));
+
+    // Unknown cases
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_or(2, 0));
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_or(2, 2));
+}
+
+test "ternary NOT is involution" {
+    // NOT (NOT x) = x for all ternary values
+    try testing.expectEqual(@as(u32, 0), betlangiser_ternary_not(betlangiser_ternary_not(0)));
+    try testing.expectEqual(@as(u32, 1), betlangiser_ternary_not(betlangiser_ternary_not(1)));
+    try testing.expectEqual(@as(u32, 2), betlangiser_ternary_not(betlangiser_ternary_not(2)));
+}
+
+//==============================================================================
+// Sampling Tests
+//==============================================================================
+
+test "sample from normal distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_normal(handle, 0.0, 1.0);
+    try testing.expect(dist != 0);
+
+    // Draw a sample — just verify it returns a finite value
+    const sample = betlangiser_sample_one(handle, dist);
+    try testing.expect(std.math.isFinite(sample));
+}
+
+test "sample from bernoulli distribution" {
+    const handle = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(handle);
+
+    const dist = betlangiser_dist_bernoulli(handle, 0.5);
+    try testing.expect(dist != 0);
+
+    const sample = betlangiser_sample_one(handle, dist);
+    // Bernoulli should return 0.0 or 1.0
+    try testing.expect(sample == 0.0 or sample == 1.0);
 }
 
 //==============================================================================
@@ -81,9 +282,9 @@ test "get string with null handle" {
 //==============================================================================
 
 test "last error after null handle operation" {
-    _ = {{project}}_process(null, 0);
+    _ = betlangiser_sample_many(null, 0, 0, 0);
 
-    const err = {{project}}_last_error();
+    const err = betlangiser_last_error();
     try testing.expect(err != null);
 
     if (err) |e| {
@@ -92,14 +293,9 @@ test "last error after null handle operation" {
     }
 }
 
-test "no error after successful operation" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
-
-    _ = {{project}}_process(handle, 0);
-
-    // Error should be cleared after successful operation
-    // (This depends on implementation)
+test "get string with null handle" {
+    const str = betlangiser_get_string(null);
+    try testing.expect(str == null);
 }
 
 //==============================================================================
@@ -107,17 +303,16 @@ test "no error after successful operation" {
 //==============================================================================
 
 test "version string is not empty" {
-    const ver = {{project}}_version();
+    const ver = betlangiser_version();
     const ver_str = std.mem.span(ver);
 
     try testing.expect(ver_str.len > 0);
 }
 
 test "version string is semantic version format" {
-    const ver = {{project}}_version();
+    const ver = betlangiser_version();
     const ver_str = std.mem.span(ver);
 
-    // Should be in format X.Y.Z
     try testing.expect(std.mem.count(u8, ver_str, ".") >= 1);
 }
 
@@ -125,58 +320,25 @@ test "version string is semantic version format" {
 // Memory Safety Tests
 //==============================================================================
 
-test "multiple handles are independent" {
-    const h1 = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(h1);
+test "multiple engines are independent" {
+    const h1 = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(h1);
 
-    const h2 = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(h2);
+    const h2 = betlangiser_init() orelse return error.InitFailed;
+    defer betlangiser_free(h2);
 
     try testing.expect(h1 != h2);
 
-    // Operations on h1 should not affect h2
-    _ = {{project}}_process(h1, 1);
-    _ = {{project}}_process(h2, 2);
-}
+    // Distributions on h1 should not affect h2
+    const d1 = betlangiser_dist_normal(h1, 1.0, 1.0);
+    const d2 = betlangiser_dist_normal(h2, 2.0, 1.0);
+    try testing.expect(d1 != 0);
+    try testing.expect(d2 != 0);
 
-test "double free is safe" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-
-    {{project}}_free(handle);
-    {{project}}_free(handle); // Should not crash
+    try testing.expectApproxEqAbs(@as(f64, 1.0), betlangiser_dist_mean(h1, d1), 0.001);
+    try testing.expectApproxEqAbs(@as(f64, 2.0), betlangiser_dist_mean(h2, d2), 0.001);
 }
 
 test "free null is safe" {
-    {{project}}_free(null); // Should not crash
-}
-
-//==============================================================================
-// Thread Safety Tests (if applicable)
-//==============================================================================
-
-test "concurrent operations" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
-
-    const ThreadContext = struct {
-        h: *opaque {},
-        id: u32,
-    };
-
-    const thread_fn = struct {
-        fn run(ctx: ThreadContext) void {
-            _ = {{project}}_process(ctx.h, ctx.id);
-        }
-    }.run;
-
-    var threads: [4]std.Thread = undefined;
-    for (&threads, 0..) |*thread, i| {
-        thread.* = try std.Thread.spawn(.{}, thread_fn, .{
-            ThreadContext{ .h = handle, .id = @intCast(i) },
-        });
-    }
-
-    for (threads) |thread| {
-        thread.join();
-    }
+    betlangiser_free(null); // Should not crash
 }

@@ -6,21 +6,21 @@
 uuid = "a5ea1382-a34c-5334-8a46-a2ebe904c810"
 primary-forge = "github"
 primary-owner = "hyperpolymath"
-canonical-name = "rsr-template-repo"
-prefixed-name = "rm-rsr-template-repo"
+canonical-name = "betlangiser"
+prefixed-name = "ac-betlangiser"
 
 [clade]
-primary = "rm"
+primary = "ac"
 secondary = ["gv"]
-assigned = "2026-03-16"
-rationale = ""
+assigned = "2026-03-20"
+rationale = "Acceleration tool — wraps deterministic code in ternary probabilistic distributions"
 
 [forges]
-github = "hyperpolymath/rsr-template-repo"
-gitlab = "hyperpolymath/rsr-template-repo"
-bitbucket = "hyperpolymath/rsr-template-repo"
+github = "hyperpolymath/betlangiser"
+gitlab = "hyperpolymath/betlangiser"
+bitbucket = "hyperpolymath/betlangiser"
 
 [lineage]
-type = "standalone"
-parent = "RSR template — scaffold for new repos"
-born = "2026-03-16"
+type = "member"
+parent = "-iser acceleration framework family (iseriser)"
+born = "2026-03-20"

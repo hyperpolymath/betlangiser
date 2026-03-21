@@ -1,13 +1,21 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
 # ⚠️ STOP - CRITICAL READING REQUIRED
 
 **THIS FILE MUST BE READ FIRST BY ALL AI AGENTS**
 
 ## WHAT IS THIS?
 
-This is the AI manifest for **[YOUR-REPO-NAME]**. It declares:
+This is the AI manifest for **betlangiser**. It declares:
 - Canonical file locations (where things MUST be, and nowhere else)
 - Critical invariants (rules that must NEVER be violated)
 - Repository structure and organization
+
+Betlangiser adds ternary probabilistic modelling to deterministic code
+via Betlang. It analyses source code, identifies values that should be
+probabilistic, wraps them in distributions, and generates
+uncertainty-propagating code with ternary logic (true/false/unknown).
 
 ## CANONICAL LOCATIONS (UNIVERSAL RULE)
 
@@ -80,34 +88,37 @@ Policy enforcement contracts (k9, dust, lust, must, trust).
 6. **Container images** - MUST use Chainguard base (`cgr.dev/chainguard/wolfi-base:latest` or `cgr.dev/chainguard/static:latest`)
 7. **Container runtime** - Podman, never Docker. Files are `Containerfile`, never `Dockerfile`
 8. **Container orchestration** - `selur-compose`, never `docker-compose`
+9. **Distribution parameters** - Must be validated at type level (Idris2 dependent types)
+10. **Ternary logic** - Kleene strong three-valued logic only, never Priest or Bochvar
 
 ## REPOSITORY STRUCTURE
 
 This repo follows the **Dual-Track** architecture:
 
 ```
-[YOUR-REPO-NAME]/
+betlangiser/
 ├── 0-AI-MANIFEST.a2ml         # THIS FILE (start here)
 ├── README.adoc                 # High-level orientation (Rich Human)
-├── ROADMAP.adoc                # Future direction
-├── CONTRIBUTING.adoc           # Human contribution guide
-├── GOVERNANCE.adoc             # Decision-making model
-├── Justfile                    # Task runner
-├── Containerfile               # OCI build
-├── LICENSE                     # Primary license
+├── ROADMAP.adoc                # Future direction (6 phases)
+├── TOPOLOGY.md                 # Structural map
+├── Cargo.toml                  # Rust build configuration
+├── LICENSE                     # PMPL-1.0-or-later
 ├── src/                        # Source code
+│   ├── main.rs                 # Rust CLI (clap subcommands)
+│   ├── lib.rs                  # Library exports
+│   ├── manifest/               # betlangiser.toml parser
+│   ├── codegen/                # Betlang wrapper generation
+│   ├── core/                   # Analysis logic
 │   └── interface/              # Verified Interface Seams
-│       ├── abi/                # Idris2 ABI (The Spec)
-│       ├── ffi/                # Zig FFI (The Bridge)
-│       └── generated/          # C Headers (The Result)
-├── container/                  # Stapeln container ecosystem
-├── docs/                       # Technical depths
-│   ├── attribution/            # Citations, owners, maintainers (adoc)
-│   ├── architecture/           # Topology, diagrams
-│   ├── theory/                 # Domain theory
-│   └── practice/               # Manuals
-├── docs/legal/                  # Legal exhibits and full texts
-└── .machine_readable/          # ALL machine-readable metadata
+│       ├── abi/                # Idris2 ABI (Distribution, TernaryBool proofs)
+│       ├── ffi/                # Zig FFI (sampling engine, ternary logic)
+│       └── generated/          # C Headers
+├── .machine_readable/          # ALL machine-readable metadata
+│   ├── 6a2/                    # Core state files (STATE, META, ECOSYSTEM, etc.)
+│   ├── CLADE.a2ml              # Clade taxonomy
+│   └── ENSAID_CONFIG.a2ml      # PanLL environment config
+├── .claude/                    # Claude Code instructions
+└── .github/                    # Workflows and community metadata
 ```
 
 ## SESSION STARTUP CHECKLIST
