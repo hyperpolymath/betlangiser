@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
-// betlangiser CLI — Add ternary probabilistic uncertainty modelling to deterministic code via Betlang
+// betlangiser CLI — Add ternary probabilistic uncertainty modelling
+// to deterministic code via Betlang.
+//
+// This tool reads a betlangiser.toml manifest that declares probabilistic
+// variables (with distributions like Normal, Uniform, Beta, Bernoulli),
+// simulation parameters, and generates Betlang source code that wraps
+// deterministic values in probability distributions with ternary logic
+// (true/false/unknown) via Kleene algebra.
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
+mod abi;
 mod codegen;
 mod manifest;
 
@@ -19,35 +27,77 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialise a new betlangiser.toml manifest.
-    Init { #[arg(short, long, default_value = ".")] path: String },
-    /// Validate a betlangiser.toml manifest.
-    Validate { #[arg(short, long, default_value = "betlangiser.toml")] manifest: String },
-    /// Generate Betlang wrapper, Zig FFI bridge, and C headers.
+    /// Initialise a new betlangiser.toml manifest with example variables.
+    Init {
+        #[arg(short, long, default_value = ".")]
+        path: String,
+    },
+    /// Validate a betlangiser.toml manifest for correctness.
+    Validate {
+        #[arg(short, long, default_value = "betlangiser.toml")]
+        manifest: String,
+    },
+    /// Generate Betlang code with distribution declarations and ternary logic.
     Generate {
-        #[arg(short, long, default_value = "betlangiser.toml")] manifest: String,
-        #[arg(short, long, default_value = "generated/betlangiser")] output: String,
+        #[arg(short, long, default_value = "betlangiser.toml")]
+        manifest: String,
+        #[arg(short, long, default_value = "generated/betlangiser")]
+        output: String,
     },
-    /// Build the generated artifacts.
-    Build { #[arg(short, long, default_value = "betlangiser.toml")] manifest: String, #[arg(long)] release: bool },
-    /// Run the workload.
+    /// Build the generated Betlang artefacts.
+    Build {
+        #[arg(short, long, default_value = "betlangiser.toml")]
+        manifest: String,
+        #[arg(long)]
+        release: bool,
+    },
+    /// Run the Monte Carlo simulation.
     Run {
-        #[arg(short, long, default_value = "betlangiser.toml")] manifest: String,
-        #[arg(trailing_var_arg = true)] args: Vec<String>,
+        #[arg(short, long, default_value = "betlangiser.toml")]
+        manifest: String,
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
     },
-    /// Show manifest information.
-    Info { #[arg(short, long, default_value = "betlangiser.toml")] manifest: String },
+    /// Show manifest information (variables, distributions, simulation config).
+    Info {
+        #[arg(short, long, default_value = "betlangiser.toml")]
+        manifest: String,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Init { path } => { manifest::init_manifest(&path)?; }
-        Commands::Validate { manifest } => { let m = manifest::load_manifest(&manifest)?; manifest::validate(&m)?; println!("Valid: {}", m.workload.name); }
-        Commands::Generate { manifest, output } => { let m = manifest::load_manifest(&manifest)?; manifest::validate(&m)?; codegen::generate_all(&m, &output)?; }
-        Commands::Build { manifest, release } => { let m = manifest::load_manifest(&manifest)?; codegen::build(&m, release)?; }
-        Commands::Run { manifest, args } => { let m = manifest::load_manifest(&manifest)?; codegen::run(&m, &args)?; }
-        Commands::Info { manifest } => { let m = manifest::load_manifest(&manifest)?; manifest::print_info(&m); }
+        Commands::Init { path } => {
+            manifest::init_manifest(&path)?;
+        }
+        Commands::Validate { manifest } => {
+            let m = manifest::load_manifest(&manifest)?;
+            manifest::validate(&m)?;
+            println!(
+                "Valid: {} ({} variables, {} samples)",
+                m.project.name,
+                m.variables.len(),
+                m.simulation.samples
+            );
+        }
+        Commands::Generate { manifest, output } => {
+            let m = manifest::load_manifest(&manifest)?;
+            manifest::validate(&m)?;
+            codegen::generate_all(&m, &output)?;
+        }
+        Commands::Build { manifest, release } => {
+            let m = manifest::load_manifest(&manifest)?;
+            codegen::build(&m, release)?;
+        }
+        Commands::Run { manifest, args } => {
+            let m = manifest::load_manifest(&manifest)?;
+            codegen::run(&m, &args)?;
+        }
+        Commands::Info { manifest } => {
+            let m = manifest::load_manifest(&manifest)?;
+            manifest::print_info(&m);
+        }
     }
     Ok(())
 }
