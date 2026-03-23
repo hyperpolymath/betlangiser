@@ -8,7 +8,7 @@
 use betlangiser::abi::{ConfidenceInterval, Distribution, TernaryBool};
 use betlangiser::codegen::codegen::generate_betlang_code;
 use betlangiser::manifest::{
-    load_manifest, validate, Manifest, ProjectConfig, SimulationConfig, VariableDecl,
+    Manifest, ProjectConfig, SimulationConfig, VariableDecl, load_manifest, validate,
 };
 
 // ---------------------------------------------------------------------------
@@ -95,9 +95,15 @@ fn test_generate_produces_betlang_code() {
     );
 
     // Ternary helpers (present because of Bernoulli variable).
-    assert!(code.contains("let ternary_and"), "Should include ternary AND");
+    assert!(
+        code.contains("let ternary_and"),
+        "Should include ternary AND"
+    );
     assert!(code.contains("let ternary_or"), "Should include ternary OR");
-    assert!(code.contains("let ternary_not"), "Should include ternary NOT");
+    assert!(
+        code.contains("let ternary_not"),
+        "Should include ternary NOT"
+    );
     assert!(
         code.contains("let will_buy_ternary"),
         "Should include per-variable ternary evaluator"

@@ -52,10 +52,7 @@ pub fn distribution_info(dist: &Distribution) -> DistributionInfo {
 
         Distribution::Uniform { min, max } => DistributionInfo {
             betlang_constructor: format!("Uniform({}, {})", min, max),
-            description: format!(
-                "Continuous uniform distribution over [{}, {}]",
-                min, max
-            ),
+            description: format!("Continuous uniform distribution over [{}, {}]", min, max),
             sampling_method: "Inverse CDF (linear scaling of U[0,1])".to_string(),
             is_boolean: false,
             support: format!("[{}, {}]", min, max),
@@ -74,10 +71,7 @@ pub fn distribution_info(dist: &Distribution) -> DistributionInfo {
 
         Distribution::Bernoulli { probability } => DistributionInfo {
             betlang_constructor: format!("Bernoulli({})", probability),
-            description: format!(
-                "Bernoulli trial with success probability {}",
-                probability
-            ),
+            description: format!("Bernoulli trial with success probability {}", probability),
             sampling_method: "Threshold comparison against U[0,1]".to_string(),
             is_boolean: true,
             support: "{0, 1} (ternary: {true, false, unknown})".to_string(),
@@ -131,7 +125,10 @@ mod tests {
 
     #[test]
     fn test_normal_distribution_info() {
-        let dist = Distribution::Normal { mean: 100.0, std_dev: 5.0 };
+        let dist = Distribution::Normal {
+            mean: 100.0,
+            std_dev: 5.0,
+        };
         let info = distribution_info(&dist);
         assert_eq!(info.betlang_constructor, "Normal(100, 5)");
         assert!(!info.is_boolean);
@@ -150,11 +147,22 @@ mod tests {
     #[test]
     fn test_all_distributions_have_info() {
         let distributions = vec![
-            Distribution::Normal { mean: 0.0, std_dev: 1.0 },
-            Distribution::Uniform { min: 0.0, max: 10.0 },
-            Distribution::Beta { alpha: 2.0, beta: 5.0 },
+            Distribution::Normal {
+                mean: 0.0,
+                std_dev: 1.0,
+            },
+            Distribution::Uniform {
+                min: 0.0,
+                max: 10.0,
+            },
+            Distribution::Beta {
+                alpha: 2.0,
+                beta: 5.0,
+            },
             Distribution::Bernoulli { probability: 0.5 },
-            Distribution::Custom { expression: "test()".to_string() },
+            Distribution::Custom {
+                expression: "test()".to_string(),
+            },
         ];
         for dist in &distributions {
             let info = distribution_info(dist);
@@ -171,7 +179,10 @@ mod tests {
 
     #[test]
     fn test_uniform_info_contains_bounds() {
-        let dist = Distribution::Uniform { min: 50.0, max: 150.0 };
+        let dist = Distribution::Uniform {
+            min: 50.0,
+            max: 150.0,
+        };
         let info = distribution_info(&dist);
         assert!(info.betlang_constructor.contains("50"));
         assert!(info.betlang_constructor.contains("150"));
@@ -180,7 +191,10 @@ mod tests {
 
     #[test]
     fn test_beta_info() {
-        let dist = Distribution::Beta { alpha: 2.0, beta: 5.0 };
+        let dist = Distribution::Beta {
+            alpha: 2.0,
+            beta: 5.0,
+        };
         let info = distribution_info(&dist);
         assert_eq!(info.support, "[0, 1]");
         assert_eq!(betlang_type(&dist), "Prob<Float>");

@@ -156,8 +156,7 @@ impl Default for SimulationConfig {
 pub fn load_manifest(path: &str) -> Result<Manifest> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read manifest: {}", path))?;
-    toml::from_str(&content)
-        .with_context(|| format!("Failed to parse manifest: {}", path))
+    toml::from_str(&content).with_context(|| format!("Failed to parse manifest: {}", path))
 }
 
 /// Validate a parsed manifest for semantic correctness.
@@ -199,7 +198,10 @@ fn validate_variable(var: &VariableDecl) -> Result<()> {
     match var.distribution.as_str() {
         "normal" => {
             let _mean = var.mean.ok_or_else(|| {
-                anyhow::anyhow!("Variable '{}': normal distribution requires 'mean'", var.name)
+                anyhow::anyhow!(
+                    "Variable '{}': normal distribution requires 'mean'",
+                    var.name
+                )
             })?;
             let std_dev = var.std_dev.ok_or_else(|| {
                 anyhow::anyhow!(
@@ -217,10 +219,16 @@ fn validate_variable(var: &VariableDecl) -> Result<()> {
         }
         "uniform" => {
             let min_val = var.min.ok_or_else(|| {
-                anyhow::anyhow!("Variable '{}': uniform distribution requires 'min'", var.name)
+                anyhow::anyhow!(
+                    "Variable '{}': uniform distribution requires 'min'",
+                    var.name
+                )
             })?;
             let max_val = var.max.ok_or_else(|| {
-                anyhow::anyhow!("Variable '{}': uniform distribution requires 'max'", var.name)
+                anyhow::anyhow!(
+                    "Variable '{}': uniform distribution requires 'max'",
+                    var.name
+                )
             })?;
             if max_val <= min_val {
                 anyhow::bail!(
@@ -233,7 +241,10 @@ fn validate_variable(var: &VariableDecl) -> Result<()> {
         }
         "beta" => {
             let alpha = var.alpha.ok_or_else(|| {
-                anyhow::anyhow!("Variable '{}': beta distribution requires 'alpha'", var.name)
+                anyhow::anyhow!(
+                    "Variable '{}': beta distribution requires 'alpha'",
+                    var.name
+                )
             })?;
             let beta = var.beta_param.ok_or_else(|| {
                 anyhow::anyhow!(

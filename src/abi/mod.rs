@@ -208,6 +208,7 @@ impl TernaryBool {
     /// Ternary NOT (Kleene strong negation).
     ///
     /// NOT True = False, NOT False = True, NOT Unknown = Unknown.
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> TernaryBool {
         match self {
             TernaryBool::True => TernaryBool::False,
@@ -448,7 +449,13 @@ mod tests {
     fn test_normal_distribution_valid() {
         let d = Distribution::new_normal(0.0, 1.0).unwrap();
         assert_eq!(d.kind(), "normal");
-        assert_eq!(d, Distribution::Normal { mean: 0.0, std_dev: 1.0 });
+        assert_eq!(
+            d,
+            Distribution::Normal {
+                mean: 0.0,
+                std_dev: 1.0
+            }
+        );
     }
 
     #[test]
@@ -499,8 +506,8 @@ mod tests {
 
     #[test]
     fn test_custom_distribution_valid() {
-        let d = Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string())
-            .unwrap();
+        let d =
+            Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string()).unwrap();
         assert_eq!(d.kind(), "custom");
     }
 
@@ -515,16 +522,40 @@ mod tests {
     fn test_ternary_and() {
         // True AND x
         assert_eq!(TernaryBool::True.and(TernaryBool::True), TernaryBool::True);
-        assert_eq!(TernaryBool::True.and(TernaryBool::False), TernaryBool::False);
-        assert_eq!(TernaryBool::True.and(TernaryBool::Unknown), TernaryBool::Unknown);
+        assert_eq!(
+            TernaryBool::True.and(TernaryBool::False),
+            TernaryBool::False
+        );
+        assert_eq!(
+            TernaryBool::True.and(TernaryBool::Unknown),
+            TernaryBool::Unknown
+        );
         // False AND x (short-circuits to False)
-        assert_eq!(TernaryBool::False.and(TernaryBool::True), TernaryBool::False);
-        assert_eq!(TernaryBool::False.and(TernaryBool::False), TernaryBool::False);
-        assert_eq!(TernaryBool::False.and(TernaryBool::Unknown), TernaryBool::False);
+        assert_eq!(
+            TernaryBool::False.and(TernaryBool::True),
+            TernaryBool::False
+        );
+        assert_eq!(
+            TernaryBool::False.and(TernaryBool::False),
+            TernaryBool::False
+        );
+        assert_eq!(
+            TernaryBool::False.and(TernaryBool::Unknown),
+            TernaryBool::False
+        );
         // Unknown AND x
-        assert_eq!(TernaryBool::Unknown.and(TernaryBool::True), TernaryBool::Unknown);
-        assert_eq!(TernaryBool::Unknown.and(TernaryBool::False), TernaryBool::False);
-        assert_eq!(TernaryBool::Unknown.and(TernaryBool::Unknown), TernaryBool::Unknown);
+        assert_eq!(
+            TernaryBool::Unknown.and(TernaryBool::True),
+            TernaryBool::Unknown
+        );
+        assert_eq!(
+            TernaryBool::Unknown.and(TernaryBool::False),
+            TernaryBool::False
+        );
+        assert_eq!(
+            TernaryBool::Unknown.and(TernaryBool::Unknown),
+            TernaryBool::Unknown
+        );
     }
 
     #[test]
@@ -532,15 +563,33 @@ mod tests {
         // True OR x (short-circuits to True)
         assert_eq!(TernaryBool::True.or(TernaryBool::True), TernaryBool::True);
         assert_eq!(TernaryBool::True.or(TernaryBool::False), TernaryBool::True);
-        assert_eq!(TernaryBool::True.or(TernaryBool::Unknown), TernaryBool::True);
+        assert_eq!(
+            TernaryBool::True.or(TernaryBool::Unknown),
+            TernaryBool::True
+        );
         // False OR x
         assert_eq!(TernaryBool::False.or(TernaryBool::True), TernaryBool::True);
-        assert_eq!(TernaryBool::False.or(TernaryBool::False), TernaryBool::False);
-        assert_eq!(TernaryBool::False.or(TernaryBool::Unknown), TernaryBool::Unknown);
+        assert_eq!(
+            TernaryBool::False.or(TernaryBool::False),
+            TernaryBool::False
+        );
+        assert_eq!(
+            TernaryBool::False.or(TernaryBool::Unknown),
+            TernaryBool::Unknown
+        );
         // Unknown OR x
-        assert_eq!(TernaryBool::Unknown.or(TernaryBool::True), TernaryBool::True);
-        assert_eq!(TernaryBool::Unknown.or(TernaryBool::False), TernaryBool::Unknown);
-        assert_eq!(TernaryBool::Unknown.or(TernaryBool::Unknown), TernaryBool::Unknown);
+        assert_eq!(
+            TernaryBool::Unknown.or(TernaryBool::True),
+            TernaryBool::True
+        );
+        assert_eq!(
+            TernaryBool::Unknown.or(TernaryBool::False),
+            TernaryBool::Unknown
+        );
+        assert_eq!(
+            TernaryBool::Unknown.or(TernaryBool::Unknown),
+            TernaryBool::Unknown
+        );
     }
 
     #[test]
@@ -553,13 +602,28 @@ mod tests {
     #[test]
     fn test_ternary_implies() {
         // True -> True = True
-        assert_eq!(TernaryBool::True.implies(TernaryBool::True), TernaryBool::True);
+        assert_eq!(
+            TernaryBool::True.implies(TernaryBool::True),
+            TernaryBool::True
+        );
         // True -> False = False
-        assert_eq!(TernaryBool::True.implies(TernaryBool::False), TernaryBool::False);
+        assert_eq!(
+            TernaryBool::True.implies(TernaryBool::False),
+            TernaryBool::False
+        );
         // False -> anything = True (ex falso quodlibet)
-        assert_eq!(TernaryBool::False.implies(TernaryBool::True), TernaryBool::True);
-        assert_eq!(TernaryBool::False.implies(TernaryBool::False), TernaryBool::True);
-        assert_eq!(TernaryBool::False.implies(TernaryBool::Unknown), TernaryBool::True);
+        assert_eq!(
+            TernaryBool::False.implies(TernaryBool::True),
+            TernaryBool::True
+        );
+        assert_eq!(
+            TernaryBool::False.implies(TernaryBool::False),
+            TernaryBool::True
+        );
+        assert_eq!(
+            TernaryBool::False.implies(TernaryBool::Unknown),
+            TernaryBool::True
+        );
     }
 
     #[test]

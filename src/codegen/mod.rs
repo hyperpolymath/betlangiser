@@ -28,13 +28,15 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     let betlang_code = codegen::generate_betlang_code(manifest)
         .map_err(|e| anyhow::anyhow!("Code generation failed: {}", e))?;
 
-    let output_path = Path::new(output_dir).join(format!(
-        "{}.bet",
-        manifest.project.name.replace('-', "_")
-    ));
+    let output_path =
+        Path::new(output_dir).join(format!("{}.bet", manifest.project.name.replace('-', "_")));
 
-    fs::write(&output_path, &betlang_code)
-        .with_context(|| format!("Failed to write generated code to {}", output_path.display()))?;
+    fs::write(&output_path, &betlang_code).with_context(|| {
+        format!(
+            "Failed to write generated code to {}",
+            output_path.display()
+        )
+    })?;
 
     println!(
         "Generated Betlang code: {} ({} bytes)",

@@ -80,18 +80,14 @@ fn parse_distribution(var: &VariableDecl) -> Result<Distribution, String> {
             let prob = var.probability.ok_or_else(|| {
                 format!("Variable '{}': bernoulli requires 'probability'", var.name)
             })?;
-            Distribution::new_bernoulli(prob)
-                .map_err(|e| format!("Variable '{}': {}", var.name, e))
+            Distribution::new_bernoulli(prob).map_err(|e| format!("Variable '{}': {}", var.name, e))
         }
         "custom" => {
             let expr = var
                 .expression
                 .clone()
-                .ok_or_else(|| {
-                    format!("Variable '{}': custom requires 'expression'", var.name)
-                })?;
-            Distribution::new_custom(expr)
-                .map_err(|e| format!("Variable '{}': {}", var.name, e))
+                .ok_or_else(|| format!("Variable '{}': custom requires 'expression'", var.name))?;
+            Distribution::new_custom(expr).map_err(|e| format!("Variable '{}': {}", var.name, e))
         }
         other => Err(format!(
             "Variable '{}': unknown distribution '{}'",
@@ -134,9 +130,12 @@ mod tests {
             distribution: "normal".to_string(),
             mean: Some(100.0),
             std_dev: Some(5.0),
-            min: None, max: None,
-            alpha: None, beta_param: None,
-            probability: None, expression: None,
+            min: None,
+            max: None,
+            alpha: None,
+            beta_param: None,
+            probability: None,
+            expression: None,
         };
         let m = make_manifest(var);
         let parsed = parse_variables(&m).unwrap();
@@ -149,39 +148,71 @@ mod tests {
     fn test_parse_all_distribution_types() {
         let vars = vec![
             VariableDecl {
-                name: "a".to_string(), distribution: "normal".to_string(),
-                mean: Some(0.0), std_dev: Some(1.0),
-                min: None, max: None, alpha: None, beta_param: None,
-                probability: None, expression: None,
+                name: "a".to_string(),
+                distribution: "normal".to_string(),
+                mean: Some(0.0),
+                std_dev: Some(1.0),
+                min: None,
+                max: None,
+                alpha: None,
+                beta_param: None,
+                probability: None,
+                expression: None,
             },
             VariableDecl {
-                name: "b".to_string(), distribution: "uniform".to_string(),
-                mean: None, std_dev: None,
-                min: Some(0.0), max: Some(10.0),
-                alpha: None, beta_param: None,
-                probability: None, expression: None,
+                name: "b".to_string(),
+                distribution: "uniform".to_string(),
+                mean: None,
+                std_dev: None,
+                min: Some(0.0),
+                max: Some(10.0),
+                alpha: None,
+                beta_param: None,
+                probability: None,
+                expression: None,
             },
             VariableDecl {
-                name: "c".to_string(), distribution: "beta".to_string(),
-                mean: None, std_dev: None, min: None, max: None,
-                alpha: Some(2.0), beta_param: Some(5.0),
-                probability: None, expression: None,
+                name: "c".to_string(),
+                distribution: "beta".to_string(),
+                mean: None,
+                std_dev: None,
+                min: None,
+                max: None,
+                alpha: Some(2.0),
+                beta_param: Some(5.0),
+                probability: None,
+                expression: None,
             },
             VariableDecl {
-                name: "d".to_string(), distribution: "bernoulli".to_string(),
-                mean: None, std_dev: None, min: None, max: None,
-                alpha: None, beta_param: None,
-                probability: Some(0.7), expression: None,
+                name: "d".to_string(),
+                distribution: "bernoulli".to_string(),
+                mean: None,
+                std_dev: None,
+                min: None,
+                max: None,
+                alpha: None,
+                beta_param: None,
+                probability: Some(0.7),
+                expression: None,
             },
             VariableDecl {
-                name: "e".to_string(), distribution: "custom".to_string(),
-                mean: None, std_dev: None, min: None, max: None,
-                alpha: None, beta_param: None,
-                probability: None, expression: Some("mixture(0.5, normal(0,1), normal(5,2))".to_string()),
+                name: "e".to_string(),
+                distribution: "custom".to_string(),
+                mean: None,
+                std_dev: None,
+                min: None,
+                max: None,
+                alpha: None,
+                beta_param: None,
+                probability: None,
+                expression: Some("mixture(0.5, normal(0,1), normal(5,2))".to_string()),
             },
         ];
         let m = Manifest {
-            project: ProjectConfig { name: "test".to_string(), description: None },
+            project: ProjectConfig {
+                name: "test".to_string(),
+                description: None,
+            },
             variables: vars,
             simulation: SimulationConfig::default(),
         };
@@ -197,10 +228,16 @@ mod tests {
     #[test]
     fn test_parse_invalid_distribution_rejected() {
         let var = VariableDecl {
-            name: "bad".to_string(), distribution: "exponential".to_string(),
-            mean: None, std_dev: None, min: None, max: None,
-            alpha: None, beta_param: None,
-            probability: None, expression: None,
+            name: "bad".to_string(),
+            distribution: "exponential".to_string(),
+            mean: None,
+            std_dev: None,
+            min: None,
+            max: None,
+            alpha: None,
+            beta_param: None,
+            probability: None,
+            expression: None,
         };
         let m = make_manifest(var);
         assert!(parse_variables(&m).is_err());
@@ -210,10 +247,16 @@ mod tests {
     fn test_parse_missing_params_rejected() {
         // Normal without std-dev.
         let var = VariableDecl {
-            name: "incomplete".to_string(), distribution: "normal".to_string(),
-            mean: Some(0.0), std_dev: None,
-            min: None, max: None, alpha: None, beta_param: None,
-            probability: None, expression: None,
+            name: "incomplete".to_string(),
+            distribution: "normal".to_string(),
+            mean: Some(0.0),
+            std_dev: None,
+            min: None,
+            max: None,
+            alpha: None,
+            beta_param: None,
+            probability: None,
+            expression: None,
         };
         let m = make_manifest(var);
         assert!(parse_variables(&m).is_err());
