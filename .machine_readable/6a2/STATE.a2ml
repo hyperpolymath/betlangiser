@@ -1,41 +1,40 @@
-;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-;; STATE.a2ml — Current project state for betlangiser
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# STATE.a2ml — Betlangiser project state
+[metadata]
+project = "betlangiser"
+version = "0.1.0"
+last-updated = "2026-03-21"
+status = "active"
+session = "converted from scheme — 2026-04-11"
 
-(state
-  (metadata
-    (version "0.1.0")
-    (last-updated "2026-03-21")
-    (author "Jonathan D.A. Jewell"))
+[project-context]
+name = "Betlangiser"
+purpose = """Add ternary probabilistic modelling via Betlang"""
+completion-percentage = 45
 
-  (project-context
-    (name "betlangiser")
-    (description "Add ternary probabilistic modelling via Betlang")
-    (status "alpha")
-    (priority "medium")
-    (ecosystem "-iser family (https://github.com/hyperpolymath/iseriser)"))
+[position]
+phase = "phase-1-complete"   # design | implementation | testing | maintenance | archived
+maturity = "experimental"  # experimental | alpha | beta | production | lts
 
-  (current-position
-    (phase "phase-1-complete")
-    (completion-percentage 45)
-    (milestone "Phase 1 complete — distribution parser, ternary codegen, model generation")
-    (what-changed
-      "2026-03-21: Phase 1 complete. Distribution parser, ternary codegen, probabilistic model generation, risk model example, bespoke manifest parsing. Integration tests passing."))
+[route-to-mvp]
+milestones = [
+  # No milestones recorded
+]
 
-  (route-to-mvp
-    (step 1 "DONE — Distribution parser (Beta, Dirichlet, Categorical)")
-    (step 2 "DONE — Ternary codegen (true/false/unknown states)")
-    (step 3 "DONE — Probabilistic model generation from manifest specs")
-    (step 4 "DONE — Risk model example with full pipeline")
-    (step 5 "DONE — Bespoke manifest parsing and CLI")
-    (step 6 "TODO — Advanced inference (Bayesian networks, Markov chains)")
-    (step 7 "TODO — Idris2 proofs for probability conservation")
-    (step 8 "TODO — PanLL panel and BoJ cartridge integration"))
+[blockers-and-issues]
+issues = [
+  "Betlang compiler not yet available — codegen produces standalone probabilistic models",
+]
 
-  (blockers-and-issues
-    (note "Betlang compiler not yet available — codegen produces standalone probabilistic models"))
+[critical-next-actions]
+actions = [
+  "Implement Bayesian network inference from model graphs",
+  "Write Idris2 proofs for probability conservation invariant",
+  "Add more distribution types (Gaussian, Poisson, Uniform)",
+]
 
-  (critical-next-actions
-    (action "Implement Bayesian network inference from model graphs")
-    (action "Write Idris2 proofs for probability conservation invariant")
-    (action "Add more distribution types (Gaussian, Poisson, Uniform)")))
+[maintenance-status]
+last-run-utc = "2026-03-21T00:00:00Z"
+last-result = "unknown"  # unknown | pass | warn | fail
