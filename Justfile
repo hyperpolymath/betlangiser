@@ -2,6 +2,8 @@
 # betlangiser — Add ternary probabilistic modelling via Betlang
 
 # Default: build and test
+import? "contractile.just"
+
 default: build test
 
 # Build release binary
