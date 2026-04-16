@@ -138,7 +138,7 @@ mod tests {
             expression: None,
         };
         let m = make_manifest(var);
-        let parsed = parse_variables(&m).unwrap();
+        let parsed = parse_variables(&m).expect("TODO: handle error");
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].name, "price");
         assert_eq!(parsed[0].distribution.kind(), "normal");
@@ -216,7 +216,7 @@ mod tests {
             variables: vars,
             simulation: SimulationConfig::default(),
         };
-        let parsed = parse_variables(&m).unwrap();
+        let parsed = parse_variables(&m).expect("TODO: handle error");
         assert_eq!(parsed.len(), 5);
         assert_eq!(parsed[0].distribution.kind(), "normal");
         assert_eq!(parsed[1].distribution.kind(), "uniform");

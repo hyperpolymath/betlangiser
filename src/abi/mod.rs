@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_normal_distribution_valid() {
-        let d = Distribution::new_normal(0.0, 1.0).unwrap();
+        let d = Distribution::new_normal(0.0, 1.0).expect("TODO: handle error");
         assert_eq!(d.kind(), "normal");
         assert_eq!(
             d,
@@ -466,7 +466,7 @@ mod tests {
 
     #[test]
     fn test_uniform_distribution_valid() {
-        let d = Distribution::new_uniform(0.0, 10.0).unwrap();
+        let d = Distribution::new_uniform(0.0, 10.0).expect("TODO: handle error");
         assert_eq!(d.kind(), "uniform");
     }
 
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_beta_distribution_valid() {
-        let d = Distribution::new_beta(2.0, 5.0).unwrap();
+        let d = Distribution::new_beta(2.0, 5.0).expect("TODO: handle error");
         assert_eq!(d.kind(), "beta");
     }
 
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn test_bernoulli_distribution_valid() {
-        let d = Distribution::new_bernoulli(0.5).unwrap();
+        let d = Distribution::new_bernoulli(0.5).expect("TODO: handle error");
         assert_eq!(d.kind(), "bernoulli");
     }
 
@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn test_custom_distribution_valid() {
         let d =
-            Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string()).unwrap();
+            Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string()).expect("TODO: handle error");
         assert_eq!(d.kind(), "custom");
     }
 
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn test_confidence_interval_valid() {
-        let ci = ConfidenceInterval::new(1.0, 5.0, 0.95).unwrap();
+        let ci = ConfidenceInterval::new(1.0, 5.0, 0.95).expect("TODO: handle error");
         assert_eq!(ci.width(), 4.0);
         assert_eq!(ci.midpoint(), 3.0);
         assert!(ci.contains(3.0));
@@ -661,7 +661,7 @@ mod tests {
     #[test]
     fn test_confidence_interval_degenerate() {
         // A point interval (lower == upper) is valid.
-        let ci = ConfidenceInterval::new(3.0, 3.0, 0.95).unwrap();
+        let ci = ConfidenceInterval::new(3.0, 3.0, 0.95).expect("TODO: handle error");
         assert_eq!(ci.width(), 0.0);
         assert!(ci.contains(3.0));
     }

@@ -414,7 +414,7 @@ samples = 1000
 confidence = 0.90
 output-format = "json"
 "#;
-        let m: Manifest = toml::from_str(toml_str).unwrap();
+        let m: Manifest = toml::from_str(toml_str).expect("TODO: handle error");
         assert!(validate(&m).is_ok());
         assert_eq!(m.project.name, "test-model");
         assert_eq!(m.variables.len(), 1);
@@ -435,7 +435,7 @@ distribution = "normal"
 mean = 0.0
 std-dev = 1.0
 "#;
-        let m: Manifest = toml::from_str(toml_str).unwrap();
+        let m: Manifest = toml::from_str(toml_str).expect("TODO: handle error");
         assert!(validate(&m).is_err());
     }
 
