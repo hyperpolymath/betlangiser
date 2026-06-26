@@ -18,6 +18,7 @@ module Betlangiser.ABI.Types
 import Data.Bits
 import Data.So
 import Data.Vect
+import Decidable.Equality
 
 %default total
 
@@ -33,10 +34,7 @@ data Platform = Linux | Windows | MacOS | BSD | WASM
 ||| This will be set during compilation based on target
 public export
 thisPlatform : Platform
-thisPlatform =
-  %runElab do
-    -- Platform detection logic
-    pure Linux  -- Default, override with compiler flags
+thisPlatform = Linux  -- Default, override with compiler flags
 
 --------------------------------------------------------------------------------
 -- Result Codes
@@ -82,7 +80,48 @@ DecEq Result where
   decEq NullPointer NullPointer = Yes Refl
   decEq InvalidDistribution InvalidDistribution = Yes Refl
   decEq SamplingFailed SamplingFailed = Yes Refl
-  decEq _ _ = No absurd
+  decEq Ok Error = No (\case Refl impossible)
+  decEq Ok InvalidParam = No (\case Refl impossible)
+  decEq Ok OutOfMemory = No (\case Refl impossible)
+  decEq Ok NullPointer = No (\case Refl impossible)
+  decEq Ok InvalidDistribution = No (\case Refl impossible)
+  decEq Ok SamplingFailed = No (\case Refl impossible)
+  decEq Error Ok = No (\case Refl impossible)
+  decEq Error InvalidParam = No (\case Refl impossible)
+  decEq Error OutOfMemory = No (\case Refl impossible)
+  decEq Error NullPointer = No (\case Refl impossible)
+  decEq Error InvalidDistribution = No (\case Refl impossible)
+  decEq Error SamplingFailed = No (\case Refl impossible)
+  decEq InvalidParam Ok = No (\case Refl impossible)
+  decEq InvalidParam Error = No (\case Refl impossible)
+  decEq InvalidParam OutOfMemory = No (\case Refl impossible)
+  decEq InvalidParam NullPointer = No (\case Refl impossible)
+  decEq InvalidParam InvalidDistribution = No (\case Refl impossible)
+  decEq InvalidParam SamplingFailed = No (\case Refl impossible)
+  decEq OutOfMemory Ok = No (\case Refl impossible)
+  decEq OutOfMemory Error = No (\case Refl impossible)
+  decEq OutOfMemory InvalidParam = No (\case Refl impossible)
+  decEq OutOfMemory NullPointer = No (\case Refl impossible)
+  decEq OutOfMemory InvalidDistribution = No (\case Refl impossible)
+  decEq OutOfMemory SamplingFailed = No (\case Refl impossible)
+  decEq NullPointer Ok = No (\case Refl impossible)
+  decEq NullPointer Error = No (\case Refl impossible)
+  decEq NullPointer InvalidParam = No (\case Refl impossible)
+  decEq NullPointer OutOfMemory = No (\case Refl impossible)
+  decEq NullPointer InvalidDistribution = No (\case Refl impossible)
+  decEq NullPointer SamplingFailed = No (\case Refl impossible)
+  decEq InvalidDistribution Ok = No (\case Refl impossible)
+  decEq InvalidDistribution Error = No (\case Refl impossible)
+  decEq InvalidDistribution InvalidParam = No (\case Refl impossible)
+  decEq InvalidDistribution OutOfMemory = No (\case Refl impossible)
+  decEq InvalidDistribution NullPointer = No (\case Refl impossible)
+  decEq InvalidDistribution SamplingFailed = No (\case Refl impossible)
+  decEq SamplingFailed Ok = No (\case Refl impossible)
+  decEq SamplingFailed Error = No (\case Refl impossible)
+  decEq SamplingFailed InvalidParam = No (\case Refl impossible)
+  decEq SamplingFailed OutOfMemory = No (\case Refl impossible)
+  decEq SamplingFailed NullPointer = No (\case Refl impossible)
+  decEq SamplingFailed InvalidDistribution = No (\case Refl impossible)
 
 --------------------------------------------------------------------------------
 -- Probability Value (proven [0,1] bounds)
@@ -304,8 +343,10 @@ data Handle : Type where
 ||| Returns Nothing if pointer is null
 public export
 createHandle : Bits64 -> Maybe Handle
-createHandle 0 = Nothing
-createHandle ptr = Just (MkHandle ptr)
+createHandle ptr =
+  case choose (ptr /= 0) of
+    Left ok => Just (MkHandle ptr {nonNull = ok})
+    Right _ => Nothing
 
 ||| Extract pointer value from handle
 public export
@@ -320,8 +361,10 @@ data DistributionHandle : Type where
 ||| Safely create a distribution handle
 public export
 createDistHandle : Bits64 -> Maybe DistributionHandle
-createDistHandle 0 = Nothing
-createDistHandle ptr = Just (MkDistHandle ptr)
+createDistHandle ptr =
+  case choose (ptr /= 0) of
+    Left ok => Just (MkDistHandle ptr {nonNull = ok})
+    Right _ => Nothing
 
 ||| Extract pointer from distribution handle
 public export
@@ -359,10 +402,16 @@ ptrSize MacOS = 64
 ptrSize BSD = 64
 ptrSize WASM = 32
 
-||| Pointer type for platform
+||| Pointer-sized integer type for the platform.
+||| 64-bit on all native platforms; 32-bit on WASM. The pointee type is
+||| phantom (the C-ABI carries pointers as opaque integers).
 public export
 CPtr : Platform -> Type -> Type
-CPtr p _ = Bits (ptrSize p)
+CPtr Linux _ = Bits64
+CPtr Windows _ = Bits64
+CPtr MacOS _ = Bits64
+CPtr BSD _ = Bits64
+CPtr WASM _ = Bits32
 
 --------------------------------------------------------------------------------
 -- Memory Layout Proofs
@@ -378,21 +427,20 @@ public export
 data HasAlignment : Type -> Nat -> Type where
   AlignProof : {0 t : Type} -> {n : Nat} -> HasAlignment t n
 
-||| Size of C types (platform-specific)
+||| Size of C types (platform-specific).
+||| Note: `CInt p` and `CSize p` reduce to `Bits32`/`Bits64`, so they are
+||| covered by the corresponding concrete clauses below.
 public export
 cSizeOf : (p : Platform) -> (t : Type) -> Nat
-cSizeOf p (CInt _) = 4
-cSizeOf p (CSize _) = if ptrSize p == 64 then 8 else 4
 cSizeOf p Bits32 = 4
 cSizeOf p Bits64 = 8
 cSizeOf p Double = 8
 cSizeOf p _ = ptrSize p `div` 8
 
-||| Alignment of C types (platform-specific)
+||| Alignment of C types (platform-specific).
+||| As above, `CInt p`/`CSize p` reduce to concrete `Bits*` types.
 public export
 cAlignOf : (p : Platform) -> (t : Type) -> Nat
-cAlignOf p (CInt _) = 4
-cAlignOf p (CSize _) = if ptrSize p == 64 then 8 else 4
 cAlignOf p Bits32 = 4
 cAlignOf p Bits64 = 8
 cAlignOf p Double = 8
@@ -406,19 +454,21 @@ cAlignOf p _ = ptrSize p `div` 8
 ||| P(E) >= 0 for all events E.
 public export
 data NonNegative : Distribution -> Type where
-  NormalNonNeg : NonNegative (Normal m s)
-  UniformNonNeg : NonNegative (Uniform l h)
-  BetaNonNeg : NonNegative (Beta a b)
+  NormalNonNeg : {0 valid : So (s > 0.0)} -> NonNegative (Normal m s {valid})
+  UniformNonNeg : {0 valid : So (l < h)} -> NonNegative (Uniform l h {valid})
+  BetaNonNeg : {0 validA : So (a > 0.0)} -> {0 validB : So (b > 0.0)} ->
+               NonNegative (Beta a b {validA} {validB})
   BernoulliNonNeg : NonNegative (Bernoulli p)
-  CustomNonNeg : NonNegative (Custom n xs)
+  CustomNonNeg : NonNegative (Custom nm xs)
 
 ||| Witness that a distribution satisfies Kolmogorov's second axiom:
 ||| P(Omega) = 1.
 public export
 data Normalised : Distribution -> Type where
-  NormalNorm : Normalised (Normal m s)
-  UniformNorm : Normalised (Uniform l h)
-  BetaNorm : Normalised (Beta a b)
+  NormalNorm : {0 valid : So (s > 0.0)} -> Normalised (Normal m s {valid})
+  UniformNorm : {0 valid : So (l < h)} -> Normalised (Uniform l h {valid})
+  BetaNorm : {0 validA : So (a > 0.0)} -> {0 validB : So (b > 0.0)} ->
+             Normalised (Beta a b {validA} {validB})
   BernoulliNorm : Normalised (Bernoulli p)
   -- Custom distributions must be validated at runtime
 
