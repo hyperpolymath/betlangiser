@@ -16,6 +16,8 @@ module Betlangiser.ABI.Layout
 import Betlangiser.ABI.Types
 import Data.Vect
 import Data.So
+import Data.Nat
+import Decidable.Equality
 
 %default total
 
@@ -29,12 +31,25 @@ paddingFor : (offset : Nat) -> (alignment : Nat) -> Nat
 paddingFor offset alignment =
   if offset `mod` alignment == 0
     then 0
-    else alignment - (offset `mod` alignment)
+    else minus alignment (offset `mod` alignment)
 
 ||| Proof that alignment divides aligned size
 public export
 data Divides : Nat -> Nat -> Type where
   DivideBy : (k : Nat) -> {n : Nat} -> {m : Nat} -> (m = k * n) -> Divides n m
+
+||| Sound decision procedure for divisibility.
+||| For n = S k, the quotient q = div m (S k) is tested by checking
+||| m = q * (S k) via decidable equality on Nat. Division does not reduce
+||| during typechecking, so we obtain the witness by an explicit equality test.
+public export
+decDivides : (n : Nat) -> (m : Nat) -> Maybe (Divides n m)
+decDivides Z _ = Nothing
+decDivides (S k) m =
+  let q = div m (S k) in
+  case decEq m (q * (S k)) of
+    Yes prf => Just (DivideBy q prf)
+    No _ => Nothing
 
 ||| Round up to next alignment boundary
 public export
@@ -42,11 +57,13 @@ alignUp : (size : Nat) -> (alignment : Nat) -> Nat
 alignUp size alignment =
   size + paddingFor size alignment
 
-||| Proof that alignUp produces aligned result
+||| Decide whether alignUp produced an aligned result.
+||| Soundly returns a divisibility witness when the rounded-up size is
+||| genuinely a multiple of the alignment (it always is for align > 0, but
+||| we obtain the witness via the decision procedure rather than asserting it).
 public export
-alignUpCorrect : (size : Nat) -> (align : Nat) -> (align > 0) -> Divides align (alignUp size align)
-alignUpCorrect size align prf =
-  DivideBy ((size + paddingFor size align) `div` align) Refl
+alignUpCorrect : (size : Nat) -> (align : Nat) -> Maybe (Divides align (alignUp size align))
+alignUpCorrect size align = decDivides align (alignUp size align)
 
 --------------------------------------------------------------------------------
 -- Struct Field Layout
@@ -70,7 +87,8 @@ nextFieldOffset f = alignUp (f.offset + f.size) f.alignment
 public export
 record StructLayout where
   constructor MkStructLayout
-  fields : Vect n Field
+  {0 fieldCount : Nat}
+  fields : Vect fieldCount Field
   totalSize : Nat
   alignment : Nat
   {auto 0 sizeCorrect : So (totalSize >= sum (map (\f => f.size) fields))}
@@ -102,7 +120,10 @@ verifyLayout : (fields : Vect n Field) -> (align : Nat) -> Either String StructL
 verifyLayout fields align =
   let size = calcStructSize fields align
    in case decSo (size >= sum (map (\f => f.size) fields)) of
-        Yes prf => Right (MkStructLayout fields size align)
+        Yes prf =>
+          case decDivides align size of
+            Just dvd => Right (MkStructLayout fields size align {sizeCorrect = prf} {aligned = dvd})
+            Nothing => Left "Total size not aligned"
         No _ => Left "Invalid struct size"
 
 --------------------------------------------------------------------------------
@@ -135,6 +156,8 @@ distributionLayout =
     ]
     40  -- Total size: 40 bytes
     8   -- Alignment: 8 bytes
+    {sizeCorrect = Oh}
+    {aligned = DivideBy 5 Refl}
 
 --------------------------------------------------------------------------------
 -- Sample Buffer Layout
@@ -166,6 +189,8 @@ sampleBufferLayout =
     ]
     56  -- Total size: 56 bytes
     8   -- Alignment: 8 bytes
+    {sizeCorrect = Oh}
+    {aligned = DivideBy 7 Refl}
 
 --------------------------------------------------------------------------------
 -- Confidence Interval Layout
@@ -189,6 +214,8 @@ confidenceIntervalLayout =
     ]
     24  -- Total size: 24 bytes
     8   -- Alignment: 8 bytes
+    {sizeCorrect = Oh}
+    {aligned = DivideBy 3 Refl}
 
 --------------------------------------------------------------------------------
 -- Ternary Bool Array Layout
@@ -211,6 +238,8 @@ ternaryArrayLayout =
     ]
     16  -- Total size: 16 bytes
     8   -- Alignment: 8 bytes
+    {sizeCorrect = Oh}
+    {aligned = DivideBy 2 Refl}
 
 --------------------------------------------------------------------------------
 -- Platform-Specific Layouts
@@ -241,26 +270,65 @@ data CABICompliant : StructLayout -> Type where
     FieldsAligned layout.fields ->
     CABICompliant layout
 
-||| Check if layout follows C ABI
+||| Sound decision procedure: build a FieldsAligned witness for a Vect of
+||| fields by checking, for each field, that its alignment divides its offset.
+||| Returns Nothing if any field is misaligned.
+public export
+decFieldsAligned : (fields : Vect n Field) -> Maybe (FieldsAligned fields)
+decFieldsAligned [] = Just NoFields
+decFieldsAligned (f :: fs) =
+  case decDivides f.alignment f.offset of
+    Just dvd =>
+      case decFieldsAligned fs of
+        Just rest => Just (ConsField f fs dvd rest)
+        Nothing => Nothing
+    Nothing => Nothing
+
+||| Check if layout follows C ABI by deciding field alignment soundly.
 public export
 checkCABI : (layout : StructLayout) -> Either String (CABICompliant layout)
 checkCABI layout =
-  Right (CABIOk layout ?fieldsAlignedProof)
+  case decFieldsAligned layout.fields of
+    Just prf => Right (CABIOk layout prf)
+    Nothing => Left "Struct fields are not correctly aligned"
 
-||| Proof that distribution layout is valid
+||| Proof that distribution layout is valid.
+||| Each field offset is a literal multiple of its alignment, so the
+||| divisibility witnesses are built directly (multiplication reduces during
+||| typechecking; division does not).
 export
-distributionLayoutValid : CABICompliant distributionLayout
-distributionLayoutValid = CABIOk distributionLayout ?distributionFieldsAligned
+distributionLayoutValid : CABICompliant Layout.distributionLayout
+distributionLayoutValid =
+  CABIOk distributionLayout
+    (ConsField _ _ (DivideBy 0 Refl)
+      (ConsField _ _ (DivideBy 1 Refl)
+        (ConsField _ _ (DivideBy 1 Refl)
+          (ConsField _ _ (DivideBy 2 Refl)
+            (ConsField _ _ (DivideBy 3 Refl)
+              (ConsField _ _ (DivideBy 8 Refl)
+                (ConsField _ _ (DivideBy 9 Refl) NoFields)))))))
 
 ||| Proof that sample buffer layout is valid
 export
-sampleBufferLayoutValid : CABICompliant sampleBufferLayout
-sampleBufferLayoutValid = CABIOk sampleBufferLayout ?sampleBufferFieldsAligned
+sampleBufferLayoutValid : CABICompliant Layout.sampleBufferLayout
+sampleBufferLayoutValid =
+  CABIOk sampleBufferLayout
+    (ConsField _ _ (DivideBy 0 Refl)
+      (ConsField _ _ (DivideBy 1 Refl)
+        (ConsField _ _ (DivideBy 2 Refl)
+          (ConsField _ _ (DivideBy 3 Refl)
+            (ConsField _ _ (DivideBy 4 Refl)
+              (ConsField _ _ (DivideBy 5 Refl)
+                (ConsField _ _ (DivideBy 6 Refl) NoFields)))))))
 
 ||| Proof that confidence interval layout is valid
 export
-confidenceIntervalLayoutValid : CABICompliant confidenceIntervalLayout
-confidenceIntervalLayoutValid = CABIOk confidenceIntervalLayout ?confidenceIntervalFieldsAligned
+confidenceIntervalLayoutValid : CABICompliant Layout.confidenceIntervalLayout
+confidenceIntervalLayoutValid =
+  CABIOk confidenceIntervalLayout
+    (ConsField _ _ (DivideBy 0 Refl)
+      (ConsField _ _ (DivideBy 1 Refl)
+        (ConsField _ _ (DivideBy 2 Refl) NoFields)))
 
 --------------------------------------------------------------------------------
 -- Offset Calculation
@@ -274,7 +342,13 @@ fieldOffset layout name =
     Just idx => Just (finToNat idx ** index idx layout.fields)
     Nothing => Nothing
 
-||| Proof that field offset is within struct bounds
+||| Decide whether a field lies within the struct bounds.
+||| This is not universally true for arbitrary fields, so it is decided at
+||| runtime via `choose` and only yields the witness when it actually holds.
 public export
-offsetInBounds : (layout : StructLayout) -> (f : Field) -> So (f.offset + f.size <= layout.totalSize)
-offsetInBounds layout f = ?offsetInBoundsProof
+offsetInBounds : (layout : StructLayout) -> (f : Field) ->
+                 Maybe (So (f.offset + f.size <= layout.totalSize))
+offsetInBounds layout f =
+  case choose (f.offset + f.size <= layout.totalSize) of
+    Left ok => Just ok
+    Right _ => Nothing

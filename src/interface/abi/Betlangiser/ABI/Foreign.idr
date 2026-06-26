@@ -18,6 +18,7 @@ module Betlangiser.ABI.Foreign
 
 import Betlangiser.ABI.Types
 import Betlangiser.ABI.Layout
+import Data.So
 
 %default total
 
