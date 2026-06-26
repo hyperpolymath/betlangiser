@@ -115,7 +115,7 @@ export fn betlangiser_init() ?*anyopaque {
     engine.* = .{
         .allocator = allocator,
         .initialized = true,
-        .prng = std.Random.DefaultPrng.init(@bitCast(std.time.nanoTimestamp())),
+        .prng = std.Random.DefaultPrng.init(@truncate(@as(u128, @bitCast(std.time.nanoTimestamp())))),
         .distributions = std.ArrayList(*Distribution).init(allocator),
     };
 
@@ -555,9 +555,9 @@ fn sampleDistribution(engine: *Engine, dist: *const Distribution) f64 {
     return switch (dist.tag) {
         .normal => blk: {
             // Box-Muller transform for normal sampling
-            const u1 = random.float(f64);
-            const u2 = random.float(f64);
-            const z = @sqrt(-2.0 * @log(u1)) * @cos(2.0 * std.math.pi * u2);
+            const unif1 = random.float(f64);
+            const unif2 = random.float(f64);
+            const z = @sqrt(-2.0 * @log(unif1)) * @cos(2.0 * std.math.pi * unif2);
             break :blk dist.param1 + dist.param2 * z;
         },
         .uniform => dist.param1 + (dist.param2 - dist.param1) * random.float(f64),
