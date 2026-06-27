@@ -8,3 +8,4 @@ modules = Betlangiser.ABI.Types
         , Betlangiser.ABI.Foreign
         , Betlangiser.ABI.Proofs
         , Betlangiser.ABI.Semantics
+        , Betlangiser.ABI.Invariants
