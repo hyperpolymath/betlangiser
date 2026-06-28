@@ -10,3 +10,4 @@ modules = Betlangiser.ABI.Types
         , Betlangiser.ABI.Semantics
         , Betlangiser.ABI.Invariants
         , Betlangiser.ABI.FfiSeam
+        , Betlangiser.ABI.Capstone
