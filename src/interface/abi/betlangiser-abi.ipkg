@@ -9,3 +9,4 @@ modules = Betlangiser.ABI.Types
         , Betlangiser.ABI.Proofs
         , Betlangiser.ABI.Semantics
         , Betlangiser.ABI.Invariants
+        , Betlangiser.ABI.FfiSeam
