@@ -506,8 +506,8 @@ mod tests {
 
     #[test]
     fn test_custom_distribution_valid() {
-        let d =
-            Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string()).expect("TODO: handle error");
+        let d = Distribution::new_custom("mixture(0.5, normal(0,1), normal(5,2))".to_string())
+            .expect("TODO: handle error");
         assert_eq!(d.kind(), "custom");
     }
 

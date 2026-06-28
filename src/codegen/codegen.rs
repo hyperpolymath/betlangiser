@@ -63,7 +63,8 @@ fn emit_header(code: &mut String, project_name: &str) {
     writeln!(code, "// Project: {}", project_name).expect("TODO: handle error");
     writeln!(code, "// SPDX-License-Identifier: MPL-2.0").expect("TODO: handle error");
     writeln!(code).expect("TODO: handle error");
-    writeln!(code, "module {} where", sanitize_identifier(project_name)).expect("TODO: handle error");
+    writeln!(code, "module {} where", sanitize_identifier(project_name))
+        .expect("TODO: handle error");
     writeln!(code).expect("TODO: handle error");
 }
 
@@ -78,7 +79,8 @@ fn emit_distribution_declarations(code: &mut String, variables: &[ParsedVariable
         let btype = betlang_type(&var.distribution);
 
         writeln!(code, "/// {} — {}", var.name, info.description).expect("TODO: handle error");
-        writeln!(code, "/// Sampling method: {}", info.sampling_method).expect("TODO: handle error");
+        writeln!(code, "/// Sampling method: {}", info.sampling_method)
+            .expect("TODO: handle error");
         writeln!(code, "/// Support: {}", info.support).expect("TODO: handle error");
         writeln!(
             code,
@@ -113,7 +115,8 @@ fn emit_ternary_helpers(code: &mut String, variables: &[ParsedVariable]) {
     writeln!(code).expect("TODO: handle error");
 
     writeln!(code, "/// Kleene strong three-valued AND").expect("TODO: handle error");
-    writeln!(code, "let ternary_and(a: Ternary, b: Ternary) -> Ternary =").expect("TODO: handle error");
+    writeln!(code, "let ternary_and(a: Ternary, b: Ternary) -> Ternary =")
+        .expect("TODO: handle error");
     writeln!(code, "  match (a, b) with").expect("TODO: handle error");
     writeln!(code, "  | (False, _) | (_, False) -> False").expect("TODO: handle error");
     writeln!(code, "  | (True, True)            -> True").expect("TODO: handle error");
@@ -121,7 +124,8 @@ fn emit_ternary_helpers(code: &mut String, variables: &[ParsedVariable]) {
     writeln!(code).expect("TODO: handle error");
 
     writeln!(code, "/// Kleene strong three-valued OR").expect("TODO: handle error");
-    writeln!(code, "let ternary_or(a: Ternary, b: Ternary) -> Ternary =").expect("TODO: handle error");
+    writeln!(code, "let ternary_or(a: Ternary, b: Ternary) -> Ternary =")
+        .expect("TODO: handle error");
     writeln!(code, "  match (a, b) with").expect("TODO: handle error");
     writeln!(code, "  | (True, _) | (_, True)   -> True").expect("TODO: handle error");
     writeln!(code, "  | (False, False)           -> False").expect("TODO: handle error");
@@ -191,7 +195,8 @@ fn emit_entry_point(code: &mut String, variables: &[ParsedVariable], config: &Ab
     }
 
     writeln!(code, "  }}").expect("TODO: handle error");
-    writeln!(code, "  report(results, confidence={})", config.confidence).expect("TODO: handle error");
+    writeln!(code, "  report(results, confidence={})", config.confidence)
+        .expect("TODO: handle error");
 }
 
 /// Sanitize a project name into a valid Betlang module identifier.
