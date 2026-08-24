@@ -17,7 +17,7 @@
 * [ ] Boolean condition detector -- find if/else, match, ternary expressions
 * [ ] Decision point mapper -- trace control flow that depends on uncertain values
 * [ ] Value dependency graph -- which outputs depend on which inputs
-* [ ] Language adapters -- Rust, ReScript, Gleam source parsing
+* [ ] Language adapters -- Rust, AffineScript, Gleam source parsing
 * [ ] Integration tests with real-world codebases
 
 == Phase 2: Distribution Wrapping

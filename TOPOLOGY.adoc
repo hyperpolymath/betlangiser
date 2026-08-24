@@ -1,17 +1,15 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-# TOPOLOGY — betlangiser
+== TOPOLOGY — betlangiser
 
-## Purpose
+=== Purpose
 
-Betlangiser adds ternary probabilistic modelling to deterministic code via
-Betlang. It analyses source code, identifies values that should be
+Betlangiser adds ternary probabilistic modelling to deterministic code
+via Betlang. It analyses source code, identifies values that should be
 probabilistic, wraps them in distributions, and generates
 uncertainty-propagating code with ternary logic (true/false/unknown).
 
-## Directory Map
+=== Directory Map
 
-```
+....
 betlangiser/
 ├── 0-AI-MANIFEST.a2ml              # AI agent entry point
 ├── README.adoc                     # Project overview
@@ -76,11 +74,11 @@ betlangiser/
 │   └── CONTRIBUTING.md
 ├── docs/                           # Documentation
 └── container/                      # Stapeln container ecosystem
-```
+....
 
-## Data Flow
+=== Data Flow
 
-```
+....
 betlangiser.toml (user manifest)
         |
         v
@@ -103,25 +101,36 @@ betlangiser.toml (user manifest)
         |               ternary bet semantics
         v
   generated/betlangiser/ (output)
-```
+....
 
-## Key Types
+=== Key Types
 
-| Type | Module | Purpose |
-|------|--------|---------|
-| `Distribution` | Types.idr | Sum type: Normal, Uniform, Beta, Bernoulli, Custom |
-| `TernaryBool` | Types.idr | True / False / Unknown with Kleene logic |
-| `ProbabilityValue` | Types.idr | Value in [0,1] with dependent type proof |
-| `ConfidenceInterval` | Types.idr | Lower/upper bounds at confidence level |
-| `SamplingStrategy` | Types.idr | MonteCarlo / Analytical / Hybrid |
+[width="100%",cols="27%,34%,39%",options="header",]
+|===
+|Type |Module |Purpose
+|`+Distribution+` |Types.idr |Sum type: Normal, Uniform, Beta,
+Bernoulli, Custom
 
-## Integration Points
+|`+TernaryBool+` |Types.idr |True / False / Unknown with Kleene logic
 
-| System | Relationship |
-|--------|-------------|
-| **iseriser** | Meta-framework; can scaffold new -iser repos |
-| **proven** | Shared Idris2 verified library (distribution proofs) |
-| **typell** | Type theory engine (ternary logic foundations) |
-| **boj-server** | Cartridge for CLI invocation via MCP |
-| **PanLL** | Monte Carlo visualisation and distribution comparison panels |
-| **VeriSimDB** | Backing store for simulation results |
+|`+ProbabilityValue+` |Types.idr |Value in [0,1] with dependent type
+proof
+
+|`+ConfidenceInterval+` |Types.idr |Lower/upper bounds at confidence
+level
+
+|`+SamplingStrategy+` |Types.idr |MonteCarlo / Analytical / Hybrid
+|===
+
+=== Integration Points
+
+[width="100%",cols="39%,61%",options="header",]
+|===
+|System |Relationship
+|*iseriser* |Meta-framework; can scaffold new -iser repos
+|*proven* |Shared Idris2 verified library (distribution proofs)
+|*typell* |Type theory engine (ternary logic foundations)
+|*boj-server* |Cartridge for CLI invocation via MCP
+|*PanLL* |Monte Carlo visualisation and distribution comparison panels
+|*VeriSimDB* |Backing store for simulation results
+|===
